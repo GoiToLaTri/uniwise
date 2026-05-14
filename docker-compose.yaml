@@ -1,0 +1,70 @@
+services:
+  mysql:
+    image: mysql:8.0.44-debian
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=0000
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p0000 || exit 1"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    networks:
+      - uniwise
+  
+  redis:
+    image: redis:8.4.0
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=0000
+    command: redis-server --requirepass 0000 --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "0000", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - uniwise
+  redisinsight:
+    image: redis/redisinsight:2.70
+    # container_name: redisinsight
+    ports:
+      - "5540:5540"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - uniwise
+
+  nginx:
+    image: nginx/openresty:1.0.0
+    build:
+      context: .
+      dockerfile: ./infrastructure/nginx/Dockerfile
+    ports:
+      - "80:80"
+    volumes:
+      - ./infrastructure/nginx/conf/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
+      - ./infrastructure/nginx/lua:/etc/nginx/lua:ro
+      - ./certificates/private.pem:/usr/local/openresty/nginx/cert/private.pem:ro
+      - ./certificates/public.pem:/usr/local/openresty/nginx/cert/public.pem:ro
+    networks:
+      - uniwise
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  uniwise:
+    driver: bridge
+    name: "uniwise"
