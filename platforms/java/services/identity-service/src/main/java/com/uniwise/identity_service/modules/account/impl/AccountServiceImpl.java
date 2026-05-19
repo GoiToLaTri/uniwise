@@ -21,17 +21,22 @@ import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.AccountError;
 import com.uniwise.common.exception.errors.RoleError;
+import com.uniwise.grpc_spring_boot_starter.annotation.GrpcClient;
 import com.uniwise.identity_service.modules.account.AccountService;
 import com.uniwise.identity_service.modules.account.entity.Account;
 import com.uniwise.identity_service.modules.account.mapper.AccountMapper;
 import com.uniwise.identity_service.modules.account.repository.AccountRepository;
 import com.uniwise.identity_service.modules.role.RoleService;
 import com.uniwise.identity_service.modules.role.entity.Role;
+import com.uniwise.user.profile.v1.CreateProfileRequest;
+import com.uniwise.user.profile.v1.CreateProfileResponse;
+import com.uniwise.user.profile.v1.ProfileServiceGrpc.ProfileServiceBlockingStub;
 
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -39,6 +44,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AccountServiceImpl implements AccountService {
+    @NonFinal
+    @GrpcClient("user-service")
+    ProfileServiceBlockingStub profileServiceClient;
+
     AccountRepository accountRepository;
     AccountMapper accountMapper;
     PasswordEncoder passwordEncoder;
@@ -59,6 +68,15 @@ public class AccountServiceImpl implements AccountService {
             throw new HttpException(AccountError.DEFAULT_ROLES_NOT_FOUND);
         account.setRoles(roles);
         Account saved = accountRepository.save(account);
+
+        CreateProfileRequest profileRequest = CreateProfileRequest.newBuilder()
+                .setAccountId(saved.getId())
+                .setEmail(saved.getEmail())
+                .setName(request.getName())
+                .build();
+
+        CreateProfileResponse profileResponse = profileServiceClient.createProfile(profileRequest);
+        log.info("Profile created successfully: {}", profileResponse.getProfile().toString());
         log.info("Account created successfully with id: {}", saved.getId());
         return accountMapper.toResponse(saved);
     }
@@ -70,7 +88,8 @@ public class AccountServiceImpl implements AccountService {
         return accountMapper.toResponse(account);
     }
 
-    // TODO: Method này sẽ được thay thế bằng elasticsearch hoặc search engine khác trong tương lai để có hiệu năng tốt hơn
+    // TODO: Method này sẽ được thay thế bằng elasticsearch hoặc search engine khác
+    // trong tương lai để có hiệu năng tốt hơn
     @Override
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
