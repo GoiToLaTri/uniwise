@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package uniwise.user.profile.v1;
+
+option java_multiple_files = true;
+option java_package = "com.uniwise.user.profile.v1";
+option java_outer_classname = "ProfileServiceProto";
+
+// ProfileService — module profile trong user service.
+service ProfileService {
+  // Tạo profile mới gắn với một account đã tồn tại.
+  rpc CreateProfile(CreateProfileRequest) returns (CreateProfileResponse);
+}
+
+message CreateProfileRequest {
+  string name = 1;
+  string account_id = 2;
+  string email = 3;
+}
+
+message CreateProfileResponse {
+  Profile profile = 1;
+}
+
+message Profile {
+  string id = 1;
+  string name = 2;
+  string account_id = 3;
+  string email = 4;
+}
