@@ -35,6 +35,7 @@ public class SecurityConfig {
     // Định nghĩa các endpoint public ở đây
     private static final Endpoint[] PUBLIC_ENDPOINT = {
             new Endpoint("/v3/api-docs", HttpMethod.GET),
+            new Endpoint("/api/v1/profiles/{publicId}", HttpMethod.GET),
     };
 
     @Bean

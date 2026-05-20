@@ -56,7 +56,7 @@ public class AccountServiceImpl implements AccountService {
     Set<String> defaultRoles = Set.of("USER");
 
     @Override
-    @Transactional
+    @Transactional(rollbackOn = Exception.class)
     public AccountResponse create(AccountCreateRequest request) {
         if (accountRepository.existsByEmailAndProvider(request.getEmail(), provider))
             throw new HttpException(AccountError.ACCOUNT_ALREADY_EXISTS);

@@ -24,8 +24,11 @@ public enum ValidationError implements ErrorDefinition {
             HttpStatus.BAD_REQUEST),
     INVALID_REQUEST_BODY("VAL_008", "Invalid request body", HttpStatus.BAD_REQUEST),
     DESCRIPTION_INVALID("VAL_009", "Description must be between 1 and 255 characters", HttpStatus.BAD_REQUEST),
+    BIO_INVALID("VAL_010", "Bio must not exceed 500 characters", HttpStatus.BAD_REQUEST),
+    AVATAR_URL_INVALID("VAL_011", "Avatar URL must not exceed 255 characters", HttpStatus.BAD_REQUEST),
+    PUBLIC_ID_INVALID("VAL_012", "Public ID must not exceed 100 characters", HttpStatus.BAD_REQUEST),
     REFRESH_TOKEN_REQUIRED(
-            "VAL_010",
+            "VAL_013",
             "Refresh token is required",
             HttpStatus.BAD_REQUEST),
     PERMISSION_NAME_REQUIRED(
