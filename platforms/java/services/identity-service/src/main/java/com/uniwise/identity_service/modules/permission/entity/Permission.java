@@ -19,7 +19,9 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Table(name = "permissions")
@@ -44,5 +46,7 @@ public class Permission {
 
     @Builder.Default
     @ManyToMany(mappedBy = "permissions", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Set<Role> roles = new HashSet<>();
 }

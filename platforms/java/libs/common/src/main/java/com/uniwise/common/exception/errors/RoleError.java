@@ -23,7 +23,11 @@ public enum RoleError implements ErrorDefinition {
             "ROL_003",
             "Failed to delete role",
             HttpStatus.BAD_REQUEST),
-            ;
+
+    SOME_PERMISSIONS_NOT_FOUND(
+            "ROL_004",
+            "Some permissions not found",
+            HttpStatus.BAD_REQUEST);
 
     String code;
     String message;

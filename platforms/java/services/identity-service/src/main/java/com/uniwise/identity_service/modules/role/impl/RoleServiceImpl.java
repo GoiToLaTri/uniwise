@@ -1,5 +1,6 @@
 package com.uniwise.identity_service.modules.role.impl;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -16,6 +17,8 @@ import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.dto.response.RoleResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.RoleError;
+import com.uniwise.identity_service.modules.permission.PermissionService;
+import com.uniwise.identity_service.modules.permission.entity.Permission;
 import com.uniwise.identity_service.modules.role.RoleService;
 import com.uniwise.identity_service.modules.role.entity.Role;
 import com.uniwise.identity_service.modules.role.mapper.RoleMapper;
@@ -33,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class RoleServiceImpl implements RoleService {
     RoleRepository roleRepository;
+    PermissionService permissionService;
     RoleMapper roleMapper;
 
     @Override
@@ -55,7 +59,8 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
-    public PageResponse<RoleResponse> getAll(int page, int size, String keyword, Boolean isActive, String sortBy, String sortDir) {
+    public PageResponse<RoleResponse> getAll(int page, int size, String keyword, Boolean isActive, String sortBy,
+            String sortDir) {
         String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
         String orderBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
         Sort.Direction direction = "desc".equalsIgnoreCase(sortDir) ? Sort.Direction.DESC : Sort.Direction.ASC;
@@ -108,6 +113,37 @@ public class RoleServiceImpl implements RoleService {
         role.setIsActive(!Boolean.TRUE.equals(role.getIsActive()));
         roleRepository.save(role);
         log.info("Role active status toggled for id: {}", id);
+    }
+
+    @Override
+    @Transactional
+    public RoleResponse assignPermissions(Long id, Set<String> permissionNames) {
+        Role role = roleRepository.findById(id)
+                .orElseThrow(() -> new HttpException(RoleError.ROLE_NOT_FOUND));
+
+        Set<Permission> permissionsToAdd = permissionService.getByNames(permissionNames);
+        if (permissionsToAdd.size() != permissionNames.size())
+            throw new HttpException(RoleError.SOME_PERMISSIONS_NOT_FOUND);
+
+        // Xóa hết permissions cũ một cách an toàn trên copy
+        Set<Permission> currentPermissions = new HashSet<>(role.getPermissions());
+        role.getPermissions().removeAll(currentPermissions);
+        // Thêm permissions mới
+        role.getPermissions().addAll(permissionsToAdd);
+
+        log.info("Permissions assigned to role with id: {}", role.getId());
+        return roleMapper.toResponse(role);
+    }
+
+    @Override
+    @Transactional
+    public RoleResponse revokePermissions(Long id, Set<String> permissionNames) {
+        Role role = roleRepository.findById(id)
+                .orElseThrow(() -> new HttpException(RoleError.ROLE_NOT_FOUND));
+        role.getPermissions().removeIf(permission -> permissionNames.contains(permission.getName()));
+        Role updated = roleRepository.save(role);
+        log.info("Permissions revoked from role with id: {}", updated.getId());
+        return roleMapper.toResponse(updated);
     }
 
     @Override

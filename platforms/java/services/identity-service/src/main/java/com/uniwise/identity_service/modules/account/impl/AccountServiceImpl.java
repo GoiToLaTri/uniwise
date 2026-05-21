@@ -201,7 +201,7 @@ public class AccountServiceImpl implements AccountService {
         // TODO: roles not found error info
         if (rolesToRemove.isEmpty())
             throw new HttpException(RoleError.ROLE_NOT_FOUND);
-        account.getRoles().removeAll(rolesToRemove);
+        account.getRoles().removeIf(role -> roleNames.contains(role.getName()));
         Account updated = accountRepository.save(account);
         log.info("Roles {} revoked from account with id: {}", roleNames, id);
         return accountMapper.toResponse(updated);

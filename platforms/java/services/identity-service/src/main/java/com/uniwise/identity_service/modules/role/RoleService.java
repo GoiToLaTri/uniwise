@@ -19,6 +19,10 @@ public interface RoleService {
 
     Set<Role> getByNames(Set<String> roleNames);
 
+    RoleResponse assignPermissions(Long id, Set<String> permissionNames);
+
+    RoleResponse revokePermissions(Long id, Set<String> permissionNames);
+
     void delete(Long id);
 
     void toggleActive(Long id);

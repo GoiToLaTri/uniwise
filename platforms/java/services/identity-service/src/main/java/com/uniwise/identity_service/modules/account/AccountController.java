@@ -1,5 +1,6 @@
 package com.uniwise.identity_service.modules.account;
 
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.http.HttpStatus;
@@ -114,8 +115,8 @@ public class AccountController {
 
     @PostMapping("/{id}/assign-roles")
     public ApiResponse<AccountResponse> assignRoles(@PathVariable String id,
-            @RequestBody Set<String> roleNames) {
-        AccountResponse response = accountService.assignRoles(id, roleNames);
+            @RequestBody List<String> roleNames) {
+        AccountResponse response = accountService.assignRoles(id, Set.copyOf(roleNames));
         return ApiResponse.<AccountResponse>builder()
                 .code("OK")
                 .message("Roles assigned successfully")
@@ -124,8 +125,8 @@ public class AccountController {
     }
 
     @PostMapping("/{id}/revoke-roles")
-    public ApiResponse<AccountResponse> revokeRoles(@PathVariable String id, @RequestBody Set<String> roleNames) {
-        AccountResponse response = accountService.revokeRoles(id, roleNames);
+    public ApiResponse<AccountResponse> revokeRoles(@PathVariable String id, @RequestBody List<String> roleNames) {
+        AccountResponse response = accountService.revokeRoles(id, Set.copyOf(roleNames));
         return ApiResponse.<AccountResponse>builder()
                 .code("OK")
                 .message("Roles revoked successfully")

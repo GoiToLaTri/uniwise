@@ -1,5 +1,8 @@
 package com.uniwise.identity_service.modules.role;
 
+import java.util.List;
+import java.util.Set;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -89,6 +92,28 @@ public class RoleController {
         return ApiResponse.<Void>builder()
                 .code("NO_CONTENT")
                 .message("Role deleted successfully")
+                .build();
+    }
+
+    @PostMapping("/{id}/assign-permissions")
+    public ApiResponse<RoleResponse> assignPermissions(@PathVariable Long id,
+            @RequestBody List<String> permissionNames) {
+        RoleResponse response = roleService.assignPermissions(id, Set.copyOf(permissionNames));
+        return ApiResponse.<RoleResponse>builder()
+                .code("OK")
+                .message("Permissions assigned to role successfully")
+                .data(response)
+                .build();
+    }
+
+    @PostMapping("/{id}/revoke-permissions")
+    public ApiResponse<RoleResponse> revokePermissions(@PathVariable Long id,
+            @RequestBody List<String> permissionNames) {
+        RoleResponse response = roleService.revokePermissions(id, Set.copyOf(permissionNames));
+        return ApiResponse.<RoleResponse>builder()
+                .code("OK")
+                .message("Permissions revoked from role successfully")
+                .data(response)
                 .build();
     }
 
