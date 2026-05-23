@@ -27,7 +27,7 @@ import lombok.experimental.FieldDefaults;
 public class ProfileController {
     ProfileService profileService;
 
-    @GetMapping
+    @GetMapping("/me")
     public ApiResponse<ProfileResponse> getMyProfile() {
         return ApiResponse.<ProfileResponse>builder()
                 .code("OK")
@@ -36,7 +36,7 @@ public class ProfileController {
                 .build();
     }
 
-    @GetMapping("/{publicId}")
+    @GetMapping("/public/{publicId}")
     public ApiResponse<ProfileResponse> getProfileByPublicId(@PathVariable String publicId) {
         return ApiResponse.<ProfileResponse>builder()
                 .code("OK")

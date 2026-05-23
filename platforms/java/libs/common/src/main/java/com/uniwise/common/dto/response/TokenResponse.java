@@ -21,6 +21,6 @@ public class TokenResponse {
 
     @Builder.Default
     String tokenType = "Bearer";
-
+    String scope;
     Instant expiresAt; // Thời điểm hết hạn của Access Token
 }

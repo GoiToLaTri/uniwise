@@ -51,7 +51,7 @@ local function redis_connect()
 end
 
 local function get_token_from_header()
-    local auth_header = ngx.req.get_headers()["authorization"]
+    local auth_header = ngx.req.get_headers()["Authorization"]
     if not auth_header then
         ngx.log(ngx.WARN, "No Authorization header found")
         return nil
