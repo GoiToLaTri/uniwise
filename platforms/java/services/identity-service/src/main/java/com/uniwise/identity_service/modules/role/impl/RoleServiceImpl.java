@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import com.uniwise.common.dto.request.RoleCreateRequest;
 import com.uniwise.common.dto.request.RoleUpdateRequest;
 import com.uniwise.common.dto.response.PageResponse;
+import com.uniwise.common.dto.response.RoleAdminResponse;
 import com.uniwise.common.dto.response.RoleResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.RoleError;
@@ -59,7 +60,7 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
-    public PageResponse<RoleResponse> getAll(int page, int size, String keyword, Boolean isActive, String sortBy,
+    public PageResponse<RoleAdminResponse> getAll(int page, int size, String keyword, Boolean isActive, String sortBy,
             String sortDir) {
         String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
         String orderBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
@@ -67,11 +68,11 @@ public class RoleServiceImpl implements RoleService {
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size), Sort.by(direction, orderBy));
 
         Page<Role> roles = roleRepository.searchRoles(normalizedKeyword, isActive, pageable);
-        List<RoleResponse> content = roles.getContent().stream()
-                .map(roleMapper::toResponse)
+        List<RoleAdminResponse> content = roles.getContent().stream()
+                .map(roleMapper::toAdminResponse)
                 .collect(Collectors.toList());
 
-        return PageResponse.<RoleResponse>builder()
+        return PageResponse.<RoleAdminResponse>builder()
                 .content(content)
                 .pageNumber(roles.getNumber())
                 .pageSize(roles.getSize())

@@ -46,7 +46,16 @@ public enum ValidationError implements ErrorDefinition {
         DEGREE_TYPE_INVALID(
                         "VAL_014",
                         "Degree type must be one of the following: Bachelor's, Master's, PhD",
-                        HttpStatus.BAD_REQUEST);
+                        HttpStatus.BAD_REQUEST),
+        DISPLAY_NAME_REQUIRED(
+                        "VAL_015",
+                        "Display name is required",
+                        HttpStatus.BAD_REQUEST),
+        DISPLAY_NAME_INVALID(
+                        "VAL_016",
+                        "Display name must be between 1 and 50 characters",
+                        HttpStatus.BAD_REQUEST),
+                        ;
 
         String code;
         String message;

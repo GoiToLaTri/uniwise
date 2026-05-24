@@ -9,6 +9,7 @@ import org.mapstruct.ReportingPolicy;
 
 import com.uniwise.common.dto.request.RoleCreateRequest;
 import com.uniwise.common.dto.request.RoleUpdateRequest;
+import com.uniwise.common.dto.response.RoleAdminResponse;
 import com.uniwise.common.dto.response.RoleResponse;
 import com.uniwise.identity_service.modules.role.entity.Role;
 
@@ -28,4 +29,6 @@ public interface RoleMapper {
     void updateEntity(RoleUpdateRequest request, @MappingTarget Role role);
 
     RoleResponse toResponse(Role role);
+
+    RoleAdminResponse toAdminResponse(Role role);
 }

@@ -12,10 +12,11 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class RoleResponse {
+public class RoleAdminResponse {
     Long id;
     String displayName;
     String name;
     String description;
     Boolean isActive;
+    int userCount;
 }

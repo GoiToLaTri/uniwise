@@ -15,6 +15,10 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RoleCreateRequest {
+    @NotBlank(message = "DISPLAY_NAME_REQUIRED")
+    @Size(min = 1, max = 50, message = "DISPLAY_NAME_INVALID")
+    String displayName;
+
     @NotBlank(message = "NAME_REQUIRED")
     @Size(min = 1, max = 50, message = "NAME_INVALID")
     String name;

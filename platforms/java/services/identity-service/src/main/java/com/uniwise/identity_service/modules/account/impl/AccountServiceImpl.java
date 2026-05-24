@@ -63,12 +63,13 @@ public class AccountServiceImpl implements AccountService {
 
         Account account = accountMapper.toEntity(request);
         account.setPassword(passwordEncoder.encode(request.getPassword()));
-        Set<Role> roles = roleService.getByNames(defaultRoles);
-        if (roles.isEmpty())
-            throw new HttpException(AccountError.DEFAULT_ROLES_NOT_FOUND);
-        account.setRoles(roles);
+        // Set<Role> roles = roleService.getByNames(defaultRoles);
+        // if (roles.isEmpty())
+        //     throw new HttpException(AccountError.DEFAULT_ROLES_NOT_FOUND);
+        // account.setRoles(roles);
         Account saved = accountRepository.save(account);
-
+        assignRoles(saved.getId(), defaultRoles);
+        
         CreateProfileRequest profileRequest = CreateProfileRequest.newBuilder()
                 .setAccountId(saved.getId())
                 .setEmail(saved.getEmail())
@@ -187,6 +188,10 @@ public class AccountServiceImpl implements AccountService {
         if (rolesToAdd.isEmpty())
             throw new HttpException(RoleError.ROLE_NOT_FOUND);
         account.getRoles().addAll(rolesToAdd);
+        // Increment user count for each role assigned
+        rolesToAdd.forEach(role -> {
+            role.setUserCount(role.getUserCount() + 1);
+        });
         Account updated = accountRepository.save(account);
         log.info("Roles {} assigned to account with id: {}", roleNames, id);
         return accountMapper.toResponse(updated);
@@ -202,6 +207,10 @@ public class AccountServiceImpl implements AccountService {
         if (rolesToRemove.isEmpty())
             throw new HttpException(RoleError.ROLE_NOT_FOUND);
         account.getRoles().removeIf(role -> roleNames.contains(role.getName()));
+        // Decrement user count for each role revoked
+        rolesToRemove.forEach(role -> {
+            role.setUserCount(Math.max(0, role.getUserCount() - 1));
+        });
         Account updated = accountRepository.save(account);
         log.info("Roles {} revoked from account with id: {}", roleNames, id);
         return accountMapper.toResponse(updated);

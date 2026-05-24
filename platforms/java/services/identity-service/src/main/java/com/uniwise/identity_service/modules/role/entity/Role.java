@@ -40,11 +40,18 @@ public class Role {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(name = "display_name", nullable = false, unique = true, length = 50)
+    String displayName;
+
+    @Column(name = "name", nullable = false, unique = true, length = 50)
     String name;
 
-    @Column(length = 255)
+    @Column(name = "description", length = 255)
     String description;
+
+    @Column(name = "user_count", nullable = false)
+    @Builder.Default
+    Integer userCount = 0;
 
     @Builder.Default
     @Column(name = "is_active", nullable = false)

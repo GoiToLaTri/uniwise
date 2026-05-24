@@ -5,6 +5,7 @@ import java.util.Set;
 import com.uniwise.common.dto.request.RoleCreateRequest;
 import com.uniwise.common.dto.request.RoleUpdateRequest;
 import com.uniwise.common.dto.response.PageResponse;
+import com.uniwise.common.dto.response.RoleAdminResponse;
 import com.uniwise.common.dto.response.RoleResponse;
 import com.uniwise.identity_service.modules.role.entity.Role;
 
@@ -13,7 +14,7 @@ public interface RoleService {
 
     RoleResponse getById(Long id);
 
-    PageResponse<RoleResponse> getAll(int page, int size, String keyword, Boolean isActive, String sortBy, String sortDir);
+    PageResponse<RoleAdminResponse> getAll(int page, int size, String keyword, Boolean isActive, String sortBy, String sortDir);
 
     RoleResponse update(Long id, RoleUpdateRequest request);
 

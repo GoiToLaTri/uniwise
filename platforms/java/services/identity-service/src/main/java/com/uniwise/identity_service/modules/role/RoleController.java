@@ -21,6 +21,7 @@ import com.uniwise.common.dto.request.RoleCreateRequest;
 import com.uniwise.common.dto.request.RoleUpdateRequest;
 import com.uniwise.common.dto.response.ApiResponse;
 import com.uniwise.common.dto.response.PageResponse;
+import com.uniwise.common.dto.response.RoleAdminResponse;
 import com.uniwise.common.dto.response.RoleResponse;
 
 import jakarta.validation.Valid;
@@ -60,15 +61,15 @@ public class RoleController {
     }
 
     @GetMapping
-    public ApiResponse<PageResponse<RoleResponse>> getAll(
+    public ApiResponse<PageResponse<RoleAdminResponse>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Boolean isActive,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
-        PageResponse<RoleResponse> response = roleService.getAll(page, size, keyword, isActive, sortBy, sortDir);
-        return ApiResponse.<PageResponse<RoleResponse>>builder()
+        PageResponse<RoleAdminResponse> response = roleService.getAll(page, size, keyword, isActive, sortBy, sortDir);
+        return ApiResponse.<PageResponse<RoleAdminResponse>>builder()
                 .code("OK")
                 .message("Roles retrieved successfully")
                 .data(response)

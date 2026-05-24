@@ -28,8 +28,8 @@ public class ServiceInitConfig {
     RoleService roleService;
     AccountService accountService;
     RoleCreateRequest[] defaultRoles = {
-            RoleCreateRequest.builder().name("USER").description("Default role for all users").build(),
-            RoleCreateRequest.builder().name("ADMIN").description("Role with full permissions").build(),
+            RoleCreateRequest.builder().name("USER").displayName("User").description("Default role for all users").build(),
+            RoleCreateRequest.builder().name("ADMIN").displayName("Administrator").description("Role with full permissions").build(),
     };
     AccountCreateRequest adminAccountRequest = AccountCreateRequest.builder()
             .name("Admin")
