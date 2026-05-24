@@ -1,7 +1,11 @@
 package com.uniwise.user_service.modules.profile.entity;
 
+import com.uniwise.user_service.modules.profile.enums.ProfileType;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -39,6 +43,10 @@ public class Profile {
 
     @Column(name = "bio", length = 500)
     String bio;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "profile_type", nullable = false, length = 50)
+    ProfileType profileType;
 
     @Column(name = "public_id", unique = true, length = 100)
     String publicId;

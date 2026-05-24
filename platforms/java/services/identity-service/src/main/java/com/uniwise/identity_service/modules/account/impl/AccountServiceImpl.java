@@ -179,7 +179,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')")
     public AccountResponse assignRoles(String id, Set<String> roleNames) {
         Account account = getEntityById(id);
         Set<Role> rolesToAdd = roleService.getByNames(roleNames);
@@ -194,7 +194,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')")
     public AccountResponse revokeRoles(String id, Set<String> roleNames) {
         Account account = getEntityById(id);
         Set<Role> rolesToRemove = roleService.getByNames(roleNames);

@@ -15,7 +15,6 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.api.Endpoint;
 import com.uniwise.common.exception.security.CustomAccessDeniedHandler;
 import com.uniwise.common.exception.security.CustomAuthenticationEntryPoint;
 import com.uniwise.jwt_security_starter.JwtAuthenticationFilter;

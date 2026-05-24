@@ -13,9 +13,10 @@ import com.uniwise.common.dto.response.ProfileResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.ProfileError;
 import com.uniwise.user_service.modules.profile.ProfileService;
+import com.uniwise.user_service.modules.profile.entity.Profile;
+import com.uniwise.user_service.modules.profile.enums.ProfileType;
 import com.uniwise.user_service.modules.profile.mapper.ProfileMapper;
 import com.uniwise.user_service.modules.profile.repository.ProfileRepository;
-import com.uniwise.user_service.modules.profile.entity.Profile;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -64,6 +65,8 @@ public class ProfileServiceImpl implements ProfileService {
 
         Profile profile = profileMapper.toEntity(request);
         profile.setAccountId(accountId);
+        // Mặc định tất cả profile được tạo ra đều có type là USER, sau này có thể update lại nếu cần
+        profile.setProfileType(ProfileType.USER);
 
         if (profile.getPublicId() == null || profile.getPublicId().isBlank()) {
             profile.setPublicId(UUID.randomUUID().toString().replaceAll("-", "").substring(0, 16));
