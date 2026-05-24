@@ -7,4 +7,6 @@ public interface SessionService {
     SessionResponse create(Session session);
 
     SessionResponse update(Session session);
+
+    void deleteById(String sessionId);
 }

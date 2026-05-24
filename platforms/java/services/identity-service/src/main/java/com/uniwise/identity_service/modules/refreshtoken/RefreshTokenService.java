@@ -15,4 +15,8 @@ public interface RefreshTokenService {
 
     // Đánh dấu token/session bị xâm nhập (khi phát hiện reuse)
     void markCompromised(RefreshToken token);
+
+    // Xóa tất cả token của một phiên (khi đăng xuất)
+    void deleteBySessionId(String sessionId);
+
 }

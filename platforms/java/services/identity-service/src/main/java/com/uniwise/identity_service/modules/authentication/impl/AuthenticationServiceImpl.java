@@ -137,9 +137,24 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         @Override
+        @Transactional
         public void logout(RefreshTokenRequest request) {
-                // TODO Auto-generated method stub
+                // 1. Tìm Refresh Token qua Hash
+                String hashedToken = TokenUtils.hash(request.getRefreshToken());
+                RefreshToken refreshToken = refreshTokenService.getByHash(hashedToken);
 
+                Session session = refreshToken.getSession();
+                if (session == null || session.isRevoked())
+                        throw new HttpException(AuthError.SESSION_NOT_FOUND);
+
+                // 2. Thu hồi session và xóa token liên quan
+                session.setRevoked(true);
+                sessionService.update(session);
+
+                redisService.deleteKey("access:" + session.getToken());
+                redisService.deleteKey("session:" + session.getId());
+
+                refreshTokenService.deleteBySessionId(session.getId());
         }
 
         @Override

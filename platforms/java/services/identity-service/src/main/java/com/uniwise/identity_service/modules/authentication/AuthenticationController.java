@@ -54,6 +54,12 @@ public class AuthenticationController {
         return "Authentication check completed";
     }
 
-    // Các endpoint khác (refresh token, logout, get active sessions, revoke
-    // session) sẽ được triển khai tương tự
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@RequestBody @Valid RefreshTokenRequest request) {
+        authenticationService.logout(request);
+        return ApiResponse.<Void>builder()
+                .code("OK")
+                .message("Logged out successfully")
+                .build();
+    }
 }

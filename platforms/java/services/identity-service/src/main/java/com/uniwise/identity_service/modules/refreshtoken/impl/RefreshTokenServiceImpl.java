@@ -63,4 +63,9 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
             token.getSession().setRevoked(true);
         refreshTokenRepository.save(token);
     }
+
+    @Override
+    public void deleteBySessionId(String sessionId) {
+        refreshTokenRepository.deleteBySessionId(sessionId);        
+    }
 }

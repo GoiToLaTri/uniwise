@@ -30,4 +30,9 @@ public class SessionServiceImpl implements SessionService {
     public SessionResponse update(Session session) {
         return sessionMapper.toResponse(sessionRepository.save(session));
     }
+
+    @Override
+    public void deleteById(String sessionId) {
+        sessionRepository.deleteById(sessionId);
+    }
 }
