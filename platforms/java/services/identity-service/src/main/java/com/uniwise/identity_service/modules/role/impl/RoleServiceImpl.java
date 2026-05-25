@@ -53,6 +53,7 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Transactional
     public RoleResponse getById(Long id) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new HttpException(RoleError.ROLE_NOT_FOUND));

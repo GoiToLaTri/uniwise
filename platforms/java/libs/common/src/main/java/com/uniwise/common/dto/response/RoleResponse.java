@@ -1,5 +1,7 @@
 package com.uniwise.common.dto.response;
 
+import java.util.Set;
+
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,4 +20,5 @@ public class RoleResponse {
     String name;
     String description;
     Boolean isActive;
+    Set<PermissionResponse> permissions;
 }
