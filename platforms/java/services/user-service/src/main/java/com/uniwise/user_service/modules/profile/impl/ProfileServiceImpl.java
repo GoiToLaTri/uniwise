@@ -1,14 +1,23 @@
 package com.uniwise.user_service.modules.profile.impl;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.uniwise.common.dto.request.ProfileCreateRequest;
 import com.uniwise.common.dto.request.ProfileUpdateRequest;
+import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.dto.response.ProfileResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.ProfileError;
@@ -39,6 +48,34 @@ public class ProfileServiceImpl implements ProfileService {
                 .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
     }
 
+    // TODO: Method này sẽ được thay thế bằng elasticsearch hoặc search engine khác
+    // trong tương lai để có hiệu năng tốt hơn
+    @Override
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional(readOnly = true)
+    public PageResponse<ProfileResponse> getAllProfiles(int page, int size, String keyword,
+            ProfileType profileType,
+            String sortBy, String sortDir) {
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+        String orderBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+        Sort.Direction direction = "desc".equalsIgnoreCase(sortDir) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size), Sort.by(direction, orderBy));
+
+        Page<Profile> profiles = profileRepository.searchProfilesWithType(normalizedKeyword, profileType, pageable);
+        List<ProfileResponse> content = profiles.getContent().stream()
+                .map(profileMapper::toResponse)
+                .collect(Collectors.toList());
+
+        return PageResponse.<ProfileResponse>builder()
+                .content(content)
+                .pageNumber(profiles.getNumber())
+                .pageSize(profiles.getSize())
+                .totalElements(profiles.getTotalElements())
+                .totalPages(profiles.getTotalPages())
+                .last(profiles.isLast())
+                .build();
+    }
+
     @Override
     public ProfileResponse getProfileByPublicId(String publicId) {
         return profileRepository.findByPublicId(publicId)
@@ -65,7 +102,8 @@ public class ProfileServiceImpl implements ProfileService {
 
         Profile profile = profileMapper.toEntity(request);
         profile.setAccountId(accountId);
-        // Mặc định tất cả profile được tạo ra đều có type là USER, sau này có thể update lại nếu cần
+        // Mặc định tất cả profile được tạo ra đều có type là USER, sau này có thể
+        // update lại nếu cần
         profile.setProfileType(ProfileType.USER);
 
         if (profile.getPublicId() == null || profile.getPublicId().isBlank()) {

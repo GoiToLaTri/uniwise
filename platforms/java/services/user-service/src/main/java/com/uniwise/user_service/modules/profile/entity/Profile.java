@@ -1,5 +1,10 @@
 package com.uniwise.user_service.modules.profile.entity;
 
+import java.time.LocalDateTime;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import com.uniwise.user_service.modules.profile.enums.ProfileType;
 
 import jakarta.persistence.Column;
@@ -51,4 +56,11 @@ public class Profile {
     @Column(name = "public_id", unique = true, length = 100)
     String publicId;
 
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    LocalDateTime updatedAt;
 }

@@ -83,6 +83,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @Transactional
     public AccountResponse getById(String id) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new HttpException(AccountError.ACCOUNT_NOT_FOUND));

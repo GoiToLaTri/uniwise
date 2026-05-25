@@ -10,23 +10,25 @@ import com.uniwise.identity_service.modules.account.entity.Account;
 
 public interface AccountService {
     AccountResponse create(AccountCreateRequest request);
- 
+
     AccountResponse getById(String id);
- 
-    PageResponse<AccountResponse> getAll(int page, int size, String keyword, Boolean isActive, String sortBy, String sortDir);
-    
+
+    PageResponse<AccountResponse> getAll(int page, int size,
+            String keyword, Boolean isActive, String sortBy,
+            String sortDir);
+
     AccountResponse getProfile();
 
     AccountResponse update(String id, AccountUpdateRequest request);
- 
+
     void delete(String id);
- 
+
     void toggleActive(String id);
 
     Account getEntityById(String id);
 
     AccountResponse assignRoles(String id, Set<String> roleNames);
-    
+
     AccountResponse revokeRoles(String id, Set<String> roleNames);
 
     Account getByEmail(String email);
