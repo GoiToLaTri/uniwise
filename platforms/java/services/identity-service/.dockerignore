@@ -1,0 +1,44 @@
+# Git
+.git/
+.gitignore
+
+# Build output
+target/
+*.jar
+*.war
+*.ear
+
+# IDE files
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (không cần copy vào context build)
+Dockerfile
+.dockerignore
+
+# Environment config (chứa secrets - không nên copy)
+.env
+application-local.properties
+application-dev.properties
+
+# Maven wrapper (đã có trong image builder, không cần copy từ host)
+.mvn/
+mvnw
+mvnw.cmd
+
+# Temporary files
+*.tmp
+*.swap
+*.bak

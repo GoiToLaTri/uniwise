@@ -9,14 +9,14 @@ services:
       - mysql_data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p0000 || exit 1"]
+      test: [ "CMD-SHELL", "mysqladmin ping -h localhost -u root -p0000 || exit 1" ]
       interval: 1m30s
       timeout: 30s
       retries: 5
       start_period: 30s
     networks:
       - uniwise
-  
+
   redis:
     image: redis:8.4.0
     ports:
@@ -27,13 +27,14 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "0000", "ping"]
+      test: [ "CMD", "redis-cli", "-a", "0000", "ping" ]
       interval: 5s
       timeout: 5s
       retries: 5
       start_period: 20s
     networks:
       - uniwise
+
   redisinsight:
     image: redis/redisinsight:2.70
     # container_name: redisinsight
@@ -59,6 +60,60 @@ services:
       - ./certificates/public.pem:/usr/local/openresty/nginx/cert/public.pem:ro
     networks:
       - uniwise
+
+  gateway:
+    build:
+      context: . # thư mục chứa Dockerfile của gateway
+      dockerfile: gateway/Dockerfile # tên file Dockerfile (mặc định)
+    container_name: gateway-service
+    ports:
+      - "8080:8080" # map port host:container
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8080
+      # Các biến môi trường khác cho gateway
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_GATEWAY=DEBUG
+    # Nếu gateway cần kết nối đến các service khác (ví dụ auth, user...)
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"  # dùng để gọi API từ host
+    networks:
+      - uniwise
+    restart: unless-stopped
+  
+  identity-service:
+    build:
+      context: .  # context là thư mục root
+      dockerfile: platforms/java/services/identity-service/Dockerfile
+    container_name: identity-service
+    # KHÔNG có ports - không expose ra ngoài host
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8000
+      - SPRING_CLOUD_DISCOVERY_ENABLED=false  # nếu dùng gateway mà ko cần discovery
+    networks:
+      - uniwise
+    restart: unless-stopped
+    depends_on:
+      - user-service
+
+  user-service:
+    build:
+      context: .  # context là thư mục root
+      dockerfile: platforms/java/services/user-service/Dockerfile
+    container_name: user-service
+    # KHÔNG có ports - không expose ra ngoài host
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8081
+      - SPRING_CLOUD_DISCOVERY_ENABLED=false  # nếu dùng gateway mà ko cần discovery
+    networks:
+      - uniwise
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   mysql_data:
