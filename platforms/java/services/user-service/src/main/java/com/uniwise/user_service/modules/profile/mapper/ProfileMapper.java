@@ -24,5 +24,6 @@ public interface ProfileMapper {
     @Mapping(target = "accountId", ignore = true)
     void updateEntity(ProfileUpdateRequest request, @MappingTarget Profile profile);
 
+    @Mapping(target = "profileType", source = "profileType")
     ProfileResponse toResponse(Profile profile);
 }

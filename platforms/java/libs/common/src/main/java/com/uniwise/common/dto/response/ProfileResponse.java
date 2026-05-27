@@ -20,4 +20,5 @@ public class ProfileResponse {
     String avatarUrl;
     String bio;
     String publicId;
+    String profileType;
 }
