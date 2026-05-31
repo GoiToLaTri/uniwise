@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ public class InstructorServiceImpl implements InstructorService {
     InstructorMapper instructorMapper;
 
     @Override
+    @PreAuthorize("hasAuthority('instructor:apply')")
     public InstructorProfileResponse applyInstructorProfile(InstructorProfileCreateRequest request) {
         String accountId = getCurrentAccountId();
 
@@ -56,6 +58,7 @@ public class InstructorServiceImpl implements InstructorService {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('instructor:get-profile')")
     @Transactional(readOnly = true)
     public InstructorProfileResponse getMyInstructorProfile() {
         String accountId = getCurrentAccountId();
