@@ -15,6 +15,8 @@ public interface ProfileService {
 
     ProfileResponse getProfileByPublicId(String publicId);
 
+    ProfileResponse getProfileByAccountId(String accountId);
+
     ProfileResponse createProfile(ProfileCreateRequest request);
 
     ProfileResponse updateProfile(ProfileUpdateRequest request);

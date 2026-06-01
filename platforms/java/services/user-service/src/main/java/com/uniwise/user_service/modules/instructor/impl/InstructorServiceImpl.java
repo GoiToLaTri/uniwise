@@ -93,6 +93,15 @@ public class InstructorServiceImpl implements InstructorService {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('instructor:get-by-account-id')")
+    @Transactional(readOnly = true)
+    public InstructorProfileResponse getInstructorProfileByAccountId(String accountId) {
+        InstructorProfile instructorProfile = instructorProfileRepository.findByAccountId(accountId)
+                .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));
+        return instructorMapper.toResponse(instructorProfile);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public InstructorProfileResponse getInstructorProfileByPublicId(String publicId) {
         InstructorProfile instructorProfile = instructorProfileRepository.findByPublicId(publicId)

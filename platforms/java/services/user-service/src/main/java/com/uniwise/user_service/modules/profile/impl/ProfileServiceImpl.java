@@ -84,6 +84,15 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('profile:get-by-account-id')")
+    @Transactional(readOnly = true)
+    public ProfileResponse getProfileByAccountId(String accountId) {
+        return profileRepository.findByAccountId(accountId)
+                .map(profileMapper::toResponse)
+                .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
+    }
+
+    @Override
     public ProfileResponse createProfile(ProfileCreateRequest request) {
         String accountId = request.getAccountId() != null ? request.getAccountId() : getCurrentAccountId();
 

@@ -64,7 +64,16 @@ public class InstructorController {
                 .build();
     }
 
-    @GetMapping("/{publicId}")
+    @GetMapping("/by-account-id/{accountId}")
+    public ApiResponse<InstructorProfileResponse> getInstructorProfileByAccountId(@PathVariable String accountId) {
+        return ApiResponse.<InstructorProfileResponse>builder()
+                .code("OK")
+                .data(instructorService.getInstructorProfileByAccountId(accountId))
+                .message("Get instructor profile by accountId success")
+                .build();
+    }
+
+    @GetMapping("/public/{publicId}")
     public ApiResponse<InstructorProfileResponse> getInstructorProfileByPublicId(@PathVariable String publicId) {
         return ApiResponse.<InstructorProfileResponse>builder()
                 .code("OK")

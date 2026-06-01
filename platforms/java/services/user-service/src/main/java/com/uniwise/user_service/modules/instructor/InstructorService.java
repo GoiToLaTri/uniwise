@@ -1,7 +1,5 @@
 package com.uniwise.user_service.modules.instructor;
 
-import java.util.List;
-
 import com.uniwise.common.dto.request.InstructorProfileCreateRequest;
 import com.uniwise.common.dto.request.InstructorProfileUpdateRequest;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
@@ -16,6 +14,8 @@ public interface InstructorService {
     InstructorProfileResponse updateMyInstructorProfile(InstructorProfileUpdateRequest request);
 
     InstructorProfileResponse getInstructorProfileByPublicId(String publicId);
+
+    InstructorProfileResponse getInstructorProfileByAccountId(String accountId);
 
     InstructorProfileResponse approveInstructorProfile(String publicId, String reviewComment);
 

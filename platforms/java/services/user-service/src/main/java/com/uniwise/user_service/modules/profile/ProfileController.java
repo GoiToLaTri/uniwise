@@ -56,6 +56,15 @@ public class ProfileController {
                 .build();
     }
 
+    @GetMapping("/by-account-id/{accountId}")
+    public ApiResponse<ProfileResponse> getProfileByAccountId(@PathVariable String accountId) {
+        return ApiResponse.<ProfileResponse>builder()
+                .code("OK")
+                .data(profileService.getProfileByAccountId(accountId))
+                .message("Get profile by accountId success")
+                .build();
+    }
+
     @GetMapping("/public/{publicId}")
     public ApiResponse<ProfileResponse> getProfileByPublicId(@PathVariable String publicId) {
         return ApiResponse.<ProfileResponse>builder()
