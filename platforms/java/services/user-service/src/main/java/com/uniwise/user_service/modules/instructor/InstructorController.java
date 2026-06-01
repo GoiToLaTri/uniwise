@@ -1,10 +1,9 @@
 package com.uniwise.user_service.modules.instructor;
 
-import java.util.List;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,6 +20,7 @@ import com.uniwise.common.dto.request.InstructorProfileUpdateRequest;
 import com.uniwise.common.dto.request.InstructorReviewRequest;
 import com.uniwise.common.dto.response.ApiResponse;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
+import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.user_service.modules.instructor.enums.EInstructorProfileStatus;
 
 import lombok.AccessLevel;
@@ -74,15 +74,16 @@ public class InstructorController {
     }
 
     @GetMapping("/applications")
-    public ApiResponse<List<InstructorProfileResponse>> listApplications(
-            @RequestParam(name = "status", required = false) String status) {
-        EInstructorProfileStatus profileStatus = status == null ? null
+    @PreAuthorize("hasAuthority('instructor:get-all')")
+    public ApiResponse<PageResponse<InstructorProfileResponse>> listApplications(
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
+        EInstructorProfileStatus profileStatus = status == null ? EInstructorProfileStatus.PENDING
                 : EInstructorProfileStatus.valueOf(status.toUpperCase());
-        return ApiResponse.<List<InstructorProfileResponse>>builder()
+        return ApiResponse.<PageResponse<InstructorProfileResponse>>builder()
                 .code("OK")
-                .data(profileStatus == null
-                        ? instructorService.listApplicationsByStatus(EInstructorProfileStatus.PENDING)
-                        : instructorService.listApplicationsByStatus(profileStatus))
+                .data(instructorService.listApplicationsByStatus(profileStatus, page, size))
                 .message("List instructor applications success")
                 .build();
     }

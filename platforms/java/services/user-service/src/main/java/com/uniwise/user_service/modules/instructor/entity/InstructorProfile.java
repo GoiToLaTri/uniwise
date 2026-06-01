@@ -48,6 +48,9 @@ public class InstructorProfile {
     String publicId;
 
     @Column(length = 150)
+    String name;
+
+    @Column(length = 150)
     String headline;
 
     @Column(length = 2000)

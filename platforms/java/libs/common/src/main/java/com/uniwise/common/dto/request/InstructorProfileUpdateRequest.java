@@ -26,6 +26,9 @@ public class InstructorProfileUpdateRequest {
     @Size(max = 2000, message = "BIOGRAPHY_INVALID")
     String biography;
 
+    @Size(max = 150, message = "NAME_INVALID")
+    String name;
+
     @Min(value = 0, message = "YEARS_OF_EXPERIENCE_INVALID")
     Integer yearsOfExperience;
 

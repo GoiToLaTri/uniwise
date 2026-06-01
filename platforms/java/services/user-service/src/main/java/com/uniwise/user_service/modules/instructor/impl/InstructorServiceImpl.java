@@ -6,6 +6,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +21,7 @@ import com.uniwise.common.dto.request.InstructorProfileUpdateRequest;
 import com.uniwise.common.dto.response.DegreeDto;
 import com.uniwise.common.dto.response.ExpertiseDto;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
+import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.InstructorError;
 import com.uniwise.user_service.modules.instructor.InstructorService;
@@ -58,7 +63,6 @@ public class InstructorServiceImpl implements InstructorService {
     }
 
     @Override
-    @PreAuthorize("hasAuthority('instructor:get-profile')")
     @Transactional(readOnly = true)
     public InstructorProfileResponse getMyInstructorProfile() {
         String accountId = getCurrentAccountId();
@@ -190,11 +194,23 @@ public class InstructorServiceImpl implements InstructorService {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('instructor:get-all')")
     @Transactional(readOnly = true)
-    public List<InstructorProfileResponse> listApplicationsByStatus(EInstructorProfileStatus status) {
-        return instructorProfileRepository.findAllByStatus(status).stream()
+    public PageResponse<InstructorProfileResponse> listApplicationsByStatus(EInstructorProfileStatus status, int page, int size) {
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size), Sort.by(Sort.Direction.DESC, "appliedAt"));
+        Page<InstructorProfile> instructorPage = instructorProfileRepository.findAllByStatus(status, pageable);
+        List<InstructorProfileResponse> content = instructorPage.getContent().stream()
                 .map(instructorMapper::toResponse)
                 .collect(Collectors.toList());
+
+        return PageResponse.<InstructorProfileResponse>builder()
+                .content(content)
+                .pageNumber(instructorPage.getNumber())
+                .pageSize(instructorPage.getSize())
+                .totalElements(instructorPage.getTotalElements())
+                .totalPages(instructorPage.getTotalPages())
+                .last(instructorPage.isLast())
+                .build();
     }
 
     private void replaceDegrees(InstructorProfile profile, List<DegreeDto> degreeDtos) {

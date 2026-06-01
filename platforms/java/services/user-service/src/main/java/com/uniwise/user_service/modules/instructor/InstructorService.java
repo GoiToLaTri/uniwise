@@ -5,6 +5,7 @@ import java.util.List;
 import com.uniwise.common.dto.request.InstructorProfileCreateRequest;
 import com.uniwise.common.dto.request.InstructorProfileUpdateRequest;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
+import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.user_service.modules.instructor.enums.EInstructorProfileStatus;
 
 public interface InstructorService {
@@ -24,5 +25,6 @@ public interface InstructorService {
 
     InstructorProfileResponse reactivateInstructorProfile(String publicId, String reviewComment);
 
-    List<InstructorProfileResponse> listApplicationsByStatus(EInstructorProfileStatus status);
+    PageResponse<InstructorProfileResponse> listApplicationsByStatus(EInstructorProfileStatus status, int page,
+            int size);
 }

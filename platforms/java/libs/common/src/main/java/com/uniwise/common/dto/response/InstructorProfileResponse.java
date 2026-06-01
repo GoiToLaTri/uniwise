@@ -18,6 +18,7 @@ public class InstructorProfileResponse {
     String id;
     String accountId;
     String publicId;
+    String name;
     String headline;
     String biography;
     Integer yearsOfExperience;

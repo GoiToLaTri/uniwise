@@ -16,4 +16,6 @@ public interface InstructorProfileRepository extends JpaRepository<InstructorPro
     boolean existsByAccountId(String accountId);
     boolean existsByPublicId(String publicId);
     List<InstructorProfile> findAllByStatus(EInstructorProfileStatus status);
+    org.springframework.data.domain.Page<InstructorProfile> findAllByStatus(EInstructorProfileStatus status,
+            org.springframework.data.domain.Pageable pageable);
 }
