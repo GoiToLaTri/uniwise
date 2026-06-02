@@ -25,4 +25,7 @@ public class ProfileUpdateRequest {
 
     @Size(max = 100, message = "PUBLIC_ID_INVALID")
     String publicId;
+
+    @Size(max = 50, message = "PROFILE_TYPE_INVALID")
+    String profileType;
 }

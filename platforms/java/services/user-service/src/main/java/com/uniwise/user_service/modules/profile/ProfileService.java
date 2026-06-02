@@ -20,4 +20,6 @@ public interface ProfileService {
     ProfileResponse createProfile(ProfileCreateRequest request);
 
     ProfileResponse updateProfile(ProfileUpdateRequest request);
+
+    ProfileResponse updateProfileByAccountId(String accountId, ProfileUpdateRequest request);
 }

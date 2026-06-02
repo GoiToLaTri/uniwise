@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package uniwise.identity.role.v1;
+
+option java_multiple_files = true;
+option java_package = "com.uniwise.identity.role.v1";
+option java_outer_classname = "RoleServiceProto";
+
+service RoleService {
+  // Cập nhật thông tin role hiện có trên Identity Service.
+  rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse);
+}
+
+message UpdateRoleRequest {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  bool is_active = 4;
+}
+
+message UpdateRoleResponse {
+  Role role = 1;
+}
+
+message Role {
+  int64 id = 1;
+  string display_name = 2;
+  string name = 3;
+  string description = 4;
+  bool is_active = 5;
+  repeated Permission permissions = 6;
+}
+
+message Permission {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+}

@@ -88,7 +88,7 @@ public class InstructorController {
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size) {
-        EInstructorProfileStatus profileStatus = status == null ? EInstructorProfileStatus.PENDING
+        EInstructorProfileStatus profileStatus = status == null ? null
                 : EInstructorProfileStatus.valueOf(status.toUpperCase());
         return ApiResponse.<PageResponse<InstructorProfileResponse>>builder()
                 .code("OK")

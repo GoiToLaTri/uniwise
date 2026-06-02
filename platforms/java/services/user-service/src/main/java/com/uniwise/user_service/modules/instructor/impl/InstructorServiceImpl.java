@@ -18,12 +18,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.uniwise.common.dto.request.InstructorProfileCreateRequest;
 import com.uniwise.common.dto.request.InstructorProfileUpdateRequest;
+import com.uniwise.common.dto.request.ProfileUpdateRequest;
 import com.uniwise.common.dto.response.DegreeDto;
 import com.uniwise.common.dto.response.ExpertiseDto;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
 import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.InstructorError;
+import com.uniwise.grpc_spring_boot_starter.annotation.GrpcClient;
+import com.uniwise.identity.account.v1.AccountServiceGrpc.AccountServiceBlockingStub;
+import com.uniwise.identity.account.v1.AssignRolesRequest;
+import com.uniwise.identity.account.v1.RevokeRolesRequest;
 import com.uniwise.user_service.modules.instructor.InstructorService;
 import com.uniwise.user_service.modules.instructor.entity.DegreeCertificate;
 import com.uniwise.user_service.modules.instructor.entity.Expertise;
@@ -31,17 +36,26 @@ import com.uniwise.user_service.modules.instructor.entity.InstructorProfile;
 import com.uniwise.user_service.modules.instructor.enums.EInstructorProfileStatus;
 import com.uniwise.user_service.modules.instructor.mapper.InstructorMapper;
 import com.uniwise.user_service.modules.instructor.repository.InstructorProfileRepository;
+import com.uniwise.user_service.modules.profile.ProfileService;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
 public class InstructorServiceImpl implements InstructorService {
     InstructorProfileRepository instructorProfileRepository;
     InstructorMapper instructorMapper;
+    ProfileService profileService;
+
+    @NonFinal
+    @GrpcClient("identity-service")
+    AccountServiceBlockingStub accountServiceClient;
 
     @Override
     @PreAuthorize("hasAuthority('instructor:apply')")
@@ -131,6 +145,20 @@ public class InstructorServiceImpl implements InstructorService {
         instructorProfile.setStatus(EInstructorProfileStatus.APPROVED);
         instructorProfile.setReviewComment(reviewComment);
         instructorProfile.setApprovedAt(LocalDateTime.now());
+        ProfileUpdateRequest profileUpdateRequest = ProfileUpdateRequest.builder()
+                .profileType("INSTRUCTOR")
+                .build();
+        profileService.updateProfileByAccountId(instructorProfile.getAccountId(), profileUpdateRequest);
+
+        AssignRolesRequest assignRolesRequest = AssignRolesRequest.newBuilder()
+                .setAccountId(instructorProfile.getAccountId())
+                .addRoleNames("INSTRUCTOR")
+                .build();
+
+        // Gọi grpc set lại vai trò cho account
+        accountServiceClient.assignRoles(assignRolesRequest);
+        // Response có thể dùng nếu cần kiểm tra trạng thái hoặc log
+        log.info("Assigned role INSTRUCTOR to account {} via identity-service grpc", instructorProfile.getAccountId());
 
         return instructorMapper.toResponse(instructorProfileRepository.save(instructorProfile));
     }
@@ -175,6 +203,13 @@ public class InstructorServiceImpl implements InstructorService {
         instructorProfile.setReviewComment(reviewComment);
         instructorProfile.setSuspendedAt(LocalDateTime.now());
 
+        // Gọi grpc để gỡ role INSTRUCTOR của account
+        RevokeRolesRequest revokeRolesRequest = RevokeRolesRequest.newBuilder()
+                .setAccountId(instructorProfile.getAccountId())
+                .addRoleNames("INSTRUCTOR")
+                .build();
+        accountServiceClient.revokeRoles(revokeRolesRequest);
+
         return instructorMapper.toResponse(instructorProfileRepository.save(instructorProfile));
     }
 
@@ -199,6 +234,13 @@ public class InstructorServiceImpl implements InstructorService {
         instructorProfile.setReviewComment(reviewComment);
         instructorProfile.setReactivatedAt(LocalDateTime.now());
 
+        // Gọi grpc để set lại role INSTRUCTOR của account
+        AssignRolesRequest assignRolesRequest = AssignRolesRequest.newBuilder()
+                .setAccountId(instructorProfile.getAccountId())
+                .addRoleNames("INSTRUCTOR")
+                .build();
+        accountServiceClient.assignRoles(assignRolesRequest);
+    
         return instructorMapper.toResponse(instructorProfileRepository.save(instructorProfile));
     }
 
@@ -211,7 +253,7 @@ public class InstructorServiceImpl implements InstructorService {
         List<InstructorProfileResponse> content = instructorPage.getContent().stream()
                 .map(instructorMapper::toResponse)
                 .collect(Collectors.toList());
-
+        
         return PageResponse.<InstructorProfileResponse>builder()
                 .content(content)
                 .pageNumber(instructorPage.getNumber())

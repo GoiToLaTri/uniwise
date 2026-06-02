@@ -137,6 +137,20 @@ public class ProfileServiceImpl implements ProfileService {
         return profileMapper.toResponse(profileRepository.save(profile));
     }
 
+    @Override
+    public ProfileResponse updateProfileByAccountId(String accountId, ProfileUpdateRequest request) {
+        Profile profile = profileRepository.findByAccountId(accountId)
+                .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
+
+        if (request.getPublicId() != null && !request.getPublicId().equals(profile.getPublicId())
+                && profileRepository.existsByPublicId(request.getPublicId())) {
+            throw new HttpException(ProfileError.PUBLIC_ID_ALREADY_EXISTS);
+        }
+
+        profileMapper.updateEntity(request, profile);
+        return profileMapper.toResponse(profileRepository.save(profile));
+    }
+
     private String getCurrentAccountId() {
         SecurityContext context = SecurityContextHolder.getContext();
         return Optional.ofNullable(context.getAuthentication())

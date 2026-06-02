@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package uniwise.identity.account.v1;
+
+option java_multiple_files = true;
+option java_package = "com.uniwise.identity.account.v1";
+option java_outer_classname = "AccountServiceProto";
+
+service AccountService {
+  // Cập nhật danh sách role của account trên Identity Service.
+  rpc UpdateRoles(UpdateAccountRolesRequest) returns (UpdateAccountRolesResponse);
+  // Gán thêm role cho account.
+  rpc AssignRoles(AssignRolesRequest) returns (AssignRolesResponse);
+  // Thu hồi role khỏi account.
+  rpc RevokeRoles(RevokeRolesRequest) returns (RevokeRolesResponse);
+}
+
+message UpdateAccountRolesRequest {
+  string account_id = 1;
+  repeated string role_names = 2;
+}
+
+message UpdateAccountRolesResponse {
+  Account account = 1;
+}
+
+message AssignRolesRequest {
+  string account_id = 1;
+  repeated string role_names = 2;
+}
+
+message AssignRolesResponse {
+  Account account = 1;
+}
+
+message RevokeRolesRequest {
+  string account_id = 1;
+  repeated string role_names = 2;
+}
+
+message RevokeRolesResponse {
+  Account account = 1;
+}
+
+message Account {
+  string id = 1;
+  string email = 2;
+  string provider = 3;
+  repeated Role roles = 4;
+}
+
+message Role {
+  int64 id = 1;
+  string display_name = 2;
+  string name = 3;
+  string description = 4;
+  bool is_active = 5;
+  repeated Permission permissions = 6;
+}
+
+message Permission {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+}
