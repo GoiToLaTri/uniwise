@@ -86,6 +86,7 @@ public class InstructorServiceImpl implements InstructorService {
     }
 
     @Override
+    @Transactional
     public InstructorProfileResponse updateMyInstructorProfile(InstructorProfileUpdateRequest request) {
         String accountId = getCurrentAccountId();
         InstructorProfile instructorProfile = instructorProfileRepository.findByAccountId(accountId)
