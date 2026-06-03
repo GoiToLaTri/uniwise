@@ -6,8 +6,6 @@ import com.uniwise.identity.account.v1.AssignRolesRequest;
 import com.uniwise.identity.account.v1.AssignRolesResponse;
 import com.uniwise.identity.account.v1.RevokeRolesRequest;
 import com.uniwise.identity.account.v1.RevokeRolesResponse;
-import com.uniwise.identity.account.v1.UpdateAccountRolesRequest;
-import com.uniwise.identity.account.v1.UpdateAccountRolesResponse;
 
 import io.grpc.stub.StreamObserver;
 import lombok.AccessLevel;

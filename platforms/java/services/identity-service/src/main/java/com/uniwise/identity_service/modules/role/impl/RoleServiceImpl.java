@@ -130,6 +130,7 @@ public class RoleServiceImpl implements RoleService {
         // Xóa hết permissions cũ một cách an toàn trên copy
         Set<Permission> currentPermissions = new HashSet<>(role.getPermissions());
         role.getPermissions().removeAll(currentPermissions);
+        
         // Thêm permissions mới
         role.getPermissions().addAll(permissionsToAdd);
 
