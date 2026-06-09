@@ -55,7 +55,36 @@ public enum ValidationError implements ErrorDefinition {
                         "VAL_016",
                         "Display name must be between 1 and 50 characters",
                         HttpStatus.BAD_REQUEST),
-                        ;
+        TIER_NAME_REQUIRED(
+                        "PT_VAL_001",
+                        "Tier name is required",
+                        HttpStatus.BAD_REQUEST),
+
+        TIER_NAME_INVALID(
+                        "PT_VAL_002",
+                        "Tier name must not exceed 255 characters",
+                        HttpStatus.BAD_REQUEST),
+
+        PRICE_AMOUNT_REQUIRED(
+                        "PT_VAL_003",
+                        "Price amount is required",
+                        HttpStatus.BAD_REQUEST),
+
+        PRICE_AMOUNT_INVALID(
+                        "PT_VAL_004",
+                        "Price amount must be zero or positive",
+                        HttpStatus.BAD_REQUEST),
+
+        CURRENCY_REQUIRED(
+                        "PT_VAL_005",
+                        "Currency is required",
+                        HttpStatus.BAD_REQUEST),
+
+        CURRENCY_INVALID(
+                        "PT_VAL_006",
+                        "Currency code must not exceed 10 characters",
+                        HttpStatus.BAD_REQUEST);
+        ;
 
         String code;
         String message;
