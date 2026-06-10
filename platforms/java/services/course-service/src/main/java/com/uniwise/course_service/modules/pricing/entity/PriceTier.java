@@ -29,7 +29,11 @@ public class PriceTier {
  
     @Column(name = "currency", nullable = false, length = 10)
     private String currency;
- 
+
+    @Builder.Default
+    @Column(name = "course_count", nullable = false)
+    private Integer courseCount = 0;
+
     @OneToMany(mappedBy = "priceTier", fetch = FetchType.LAZY)
     private List<Course> courses;
 

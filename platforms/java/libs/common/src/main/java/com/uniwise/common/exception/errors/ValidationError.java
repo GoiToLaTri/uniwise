@@ -83,6 +83,21 @@ public enum ValidationError implements ErrorDefinition {
         CURRENCY_INVALID(
                         "PT_VAL_006",
                         "Currency code must not exceed 10 characters",
+                        HttpStatus.BAD_REQUEST),
+
+        HASHTAG_NAME_REQUIRED(
+                        "HT_VAL_001",
+                        "Hashtag name is required",
+                        HttpStatus.BAD_REQUEST),
+
+        HASHTAG_NAME_TOO_SHORT(
+                        "HT_VAL_002",
+                        "Hashtag name must be at least 1 character",
+                        HttpStatus.BAD_REQUEST),
+
+        HASHTAG_NAME_TOO_LONG(
+                        "HT_VAL_003",
+                        "Hashtag name must not exceed 100 characters",
                         HttpStatus.BAD_REQUEST);
         ;
 
