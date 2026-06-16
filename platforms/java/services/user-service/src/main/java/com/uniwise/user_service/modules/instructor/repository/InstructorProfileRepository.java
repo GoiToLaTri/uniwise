@@ -8,12 +8,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
+
 
 import com.uniwise.user_service.modules.instructor.entity.InstructorProfile;
 import com.uniwise.user_service.modules.instructor.enums.EInstructorProfileStatus;
 
-@Repository
+
 public interface InstructorProfileRepository extends JpaRepository<InstructorProfile, String> {
     Optional<InstructorProfile> findByAccountId(String accountId);
     
