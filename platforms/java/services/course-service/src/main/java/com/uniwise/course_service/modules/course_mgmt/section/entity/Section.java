@@ -16,6 +16,9 @@ public class Section {
     @Id
     @Column(name = "id", nullable = false, length = 36)
     private String id;
+
+    @Column(name = "public_id", unique = true, nullable = false, length = 16)
+    private String publicId;
  
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
@@ -30,4 +33,12 @@ public class Section {
     @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @OrderBy("sortOrder ASC")
     private List<Lesson> lessons;
+
+    @org.hibernate.annotations.CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private java.time.LocalDateTime createdAt;
+
+    @org.hibernate.annotations.UpdateTimestamp
+    @Column(name = "updated_at")
+    private java.time.LocalDateTime updatedAt;
 }
