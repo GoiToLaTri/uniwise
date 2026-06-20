@@ -35,6 +35,13 @@ public class Course {
     @Column(name = "id", nullable = false, length = 36)
     private String id;
 
+    @Column(name = "public_id", unique = true, nullable = false, length = 16)
+    private String publicId;
+
+    @Builder.Default
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+ 
     @Column(name = "creator_id")
     private String creatorId;
  
@@ -74,5 +81,10 @@ public class Course {
     @PrePersist
     protected void onCreate() {
         this.createdAt = Instant.now();
+    }
+
+    @jakarta.persistence.PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = Instant.now();
     }
 }

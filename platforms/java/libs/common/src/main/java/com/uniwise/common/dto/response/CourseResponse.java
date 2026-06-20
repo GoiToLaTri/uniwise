@@ -1,0 +1,28 @@
+package com.uniwise.common.dto.response;
+
+import java.time.Instant;
+import java.util.List;
+import com.uniwise.common.enums.ECourseStatus;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class CourseResponse {
+    private String id;
+    private String publicId;
+    private String creatorId;
+    private String priceTierId;
+    private String title;
+    private String description;
+    private String thumbnailUrl;
+    private ECourseStatus status;
+    private Boolean isActive;
+    private Instant createdAt;
+    private Instant updatedAt;
+    private List<SectionResponse> sections;
+}
