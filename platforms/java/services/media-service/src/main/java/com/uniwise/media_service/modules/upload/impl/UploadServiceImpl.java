@@ -3,7 +3,6 @@ package com.uniwise.media_service.modules.upload.impl;
 import java.io.InputStream;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -11,6 +10,7 @@ import com.uniwise.common.dto.response.UploadResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.ServerError;
 import com.uniwise.common.exception.errors.ValidationError;
+import com.uniwise.media_service.configuration.MinioProperties;
 import com.uniwise.media_service.modules.upload.UploadService;
 
 import io.minio.MinioClient;
@@ -18,7 +18,6 @@ import io.minio.PutObjectArgs;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -28,14 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 public class UploadServiceImpl implements UploadService {
 
     MinioClient minioClient;
-
-    @NonFinal
-    @Value("${minio.bucket-name}")
-    String bucketName;
-
-    @NonFinal
-    @Value("${minio.public-url}")
-    String publicUrl;
+    MinioProperties minioProperties;
 
     @Override
     public UploadResponse uploadThumbnail(MultipartFile file) {
@@ -43,6 +35,9 @@ public class UploadServiceImpl implements UploadService {
             log.error("Uploaded file is null or empty");
             throw new HttpException(ValidationError.INVALID_REQUEST_BODY);
         }
+
+        String bucketName = minioProperties.getBucketName();
+        String publicUrl = minioProperties.getPublicUrl();
 
         String originalFilename = file.getOriginalFilename();
         String extension = "";
