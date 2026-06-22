@@ -24,6 +24,8 @@ public class CourseCreateRequest {
 
     String thumbnailUrl;
 
+    String thumbnailName;
+
     String priceTierId; // Optional/nullable for free courses
 
     ECourseStatus status; // Defaults to DRAFT in service if null

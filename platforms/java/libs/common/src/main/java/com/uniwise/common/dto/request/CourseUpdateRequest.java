@@ -19,6 +19,7 @@ public class CourseUpdateRequest {
     String title;
     String description;
     String thumbnailUrl;
+    String thumbnailName;
     String priceTierId; // Can be set to null for free courses
     ECourseStatus status;
 }

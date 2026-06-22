@@ -3,3 +3,7 @@ AI_MODULE_GENERATION_RULES.md
 ARCHITECTURE_REVIEW.md
 MODULE_EXAMPLES.md
 /agents
+
+# Temp
+/platforms/java/libs/platform-event-contract
+/platforms/java/libs/platform-event-starter

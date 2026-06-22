@@ -59,6 +59,9 @@ public class Course {
     @Column(name = "thumbnail_url")
     private String thumbnailUrl;
 
+    @Column(name = "thumbnail_name")
+    private String thumbnailName;
+
     @Column(name="status", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private ECourseStatus status;

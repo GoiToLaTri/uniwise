@@ -20,6 +20,7 @@ public class CourseResponse {
     private String title;
     private String description;
     private String thumbnailUrl;
+    private String thumbnailName;
     private ECourseStatus status;
     private Boolean isActive;
     private Instant createdAt;
