@@ -13,7 +13,7 @@ if (-not $scriptPath) {
 # 1. Khoi dong ha tang Docker
 Write-Host ">>> Khoi dong Docker Infrastructure..." -ForegroundColor Green
 # Chi chay cac service ben ngoai (infrastructure services)
-docker compose -p uniwise up -d mysql redis redisinsight nginx rabbitmq minio
+docker compose -p uniwise up -d mysql redis redisinsight nginx rabbitmq minio ffmpeg
 # Chay toan bo cac service (all services)
 # docker compose -p uniwise up -d
 

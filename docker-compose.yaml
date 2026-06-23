@@ -155,6 +155,16 @@ services:
       - uniwise
     restart: unless-stopped
 
+  ffmpeg:
+    image: jrottenberg/ffmpeg:latest
+    container_name: ffmpeg-service
+    entrypoint: ["tail", "-f", "/dev/null"]
+    volumes:
+      - ./temp:/temp # Chia sẻ thư mục tạm giữa host (Java app) và container để xử lý file
+    networks:
+      - uniwise
+    restart: unless-stopped
+
 volumes:
   mysql_data:
   redis_data:

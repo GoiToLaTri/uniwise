@@ -33,4 +33,14 @@ public class UploadController {
                 .data(uploadService.uploadThumbnail(file))
                 .build();
     }
+
+    @PostMapping(value = "/video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<UploadResponse> uploadVideo(@RequestParam("file") MultipartFile file) {
+        return ApiResponse.<UploadResponse>builder()
+                .code("CREATED")
+                .message("Video uploaded successfully")
+                .data(uploadService.uploadVideo(file))
+                .build();
+    }
 }
