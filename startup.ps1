@@ -32,7 +32,8 @@ $services = @(
     @{ Path = "platforms/java/services/identity-service"; Title = "Identity Service (8000)" },
     @{ Path = "platforms/java/services/user-service"; Title = "User Service (8081)" },
     @{ Path = "platforms/java/services/course-service"; Title = "Course Service (8082)" },
-    @{ Path = "platforms/java/services/media-service"; Title = "Media Service (8083)" }
+    @{ Path = "platforms/java/services/media-service"; Title = "Media Service (8083)" },
+    @{ Path = "platforms/java/workers/ffmpeg-worker"; Title = "FFmpeg Worker (9900)" }
 )
 
 $ps7guid = "574e775e-4f2a-5b96-ac1e-a2962a402336"
