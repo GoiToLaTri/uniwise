@@ -10,6 +10,8 @@ import com.uniwise.course_service.modules.course_mgmt.lesson.entity.Lesson;
 
 public interface LessonRepository extends JpaRepository<Lesson, String> {
 
+    java.util.List<Lesson> findByContentReference(String contentReference);
+
     boolean existsBySectionIdAndSortOrder(String sectionId, Integer sortOrder);
 
     boolean existsBySectionIdAndSortOrderAndPublicIdNot(String sectionId, Integer sortOrder, String publicId);

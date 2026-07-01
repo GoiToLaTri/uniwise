@@ -60,11 +60,17 @@ public class LessonServiceImpl implements LessonService {
         Lesson lesson = lessonMapper.toEntity(request);
         lesson.setId(UUID.randomUUID().toString());
 
-        // Generate unique 16-character publicId
-        String publicId;
-        do {
-            publicId = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 16);
-        } while (lessonRepository.existsByPublicId(publicId));
+        // Generate unique 16-character publicId if not provided by client
+        String publicId = request.getPublicId();
+        if (publicId == null || publicId.isBlank()) {
+            do {
+                publicId = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 16);
+            } while (lessonRepository.existsByPublicId(publicId));
+        } else {
+            if (lessonRepository.existsByPublicId(publicId)) {
+                throw new HttpException(com.uniwise.common.exception.errors.ValidationError.INVALID_REQUEST_BODY);
+            }
+        }
         lesson.setPublicId(publicId);
 
         lesson.setSection(section);

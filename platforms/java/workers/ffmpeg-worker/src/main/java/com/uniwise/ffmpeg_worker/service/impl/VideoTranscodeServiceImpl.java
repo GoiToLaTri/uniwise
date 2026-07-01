@@ -8,9 +8,15 @@ import com.uniwise.platform_event_contract.event.media.VideoUploadedEvent;
 import io.minio.DownloadObjectArgs;
 import io.minio.MinioClient;
 import io.minio.UploadObjectArgs;
+import io.minio.RemoveObjectArgs;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import com.uniwise.platform_event_starter.publisher.EventPublisher;
+import com.uniwise.platform_event_contract.constant.Exchanges;
+import com.uniwise.platform_event_contract.constant.RoutingKeys;
+import com.uniwise.platform_event_contract.event.media.VideoProcessedEvent;
 
 import java.io.File;
 import java.util.List;
@@ -22,20 +28,23 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
 
     private final MinioClient minioClient;
     private final FfmpegService ffmpegService;
+    private final EventPublisher eventPublisher;
 
     @Override
     public void transcodeVideoToHls(EventEnvelope<VideoUploadedEvent> envelope) {
         VideoUploadedEvent event = envelope.getPayload();
-        String eventId = envelope.getEventId();
+        String lessonId = event.getLessonId();
         
-        log.info("Start processing HLS video transcoding for eventId={}", eventId);
+        log.info("Start processing HLS video transcoding for lessonId={}", lessonId);
 
         String fileExtension = getFileExtension(event.getOriginalFilename());
-        String inputFileName = "input_" + eventId + fileExtension;
-        String hlsFolderName = "hls_" + eventId;
+        String inputFileName = "input_" + lessonId + fileExtension;
+        String hlsFolderName = "hls_" + lessonId;
 
         File localInputFile = ffmpegService.getLocalTempFile(inputFileName);
         File localHlsFolder = ffmpegService.getLocalTempFile(hlsFolderName);
+
+        boolean transcodeSuccess = false;
 
         try {
             // Ensure HLS folder exists on Host
@@ -80,7 +89,8 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
             boolean success = ffmpegService.execute(ffmpegArgs);
 
             if (!success) {
-                log.error("FFmpeg HLS conversion failed for eventId={}. Aborting upload.", eventId);
+                log.error("FFmpeg HLS conversion failed for lessonId={}. Aborting upload.", lessonId);
+                publishProcessedEvent(lessonId, event.getBucketName(), "FAILED");
                 return;
             }
 
@@ -89,7 +99,7 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
             if (hlsFiles != null && hlsFiles.length > 0) {
                 log.info("Found {} HLS files to upload.", hlsFiles.length);
                 for (File file : hlsFiles) {
-                    String outputObjectKey = "processed/" + eventId + "/" + file.getName();
+                    String outputObjectKey = "processed/" + lessonId + "/" + file.getName();
                     String contentType = file.getName().endsWith(".m3u8") 
                             ? "application/x-mpegURL" 
                             : "video/MP2T";
@@ -104,17 +114,47 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
                                     .build()
                     );
                 }
-                log.info("Successfully processed and uploaded HLS video to folder: processed/{}/", eventId);
+                log.info("Successfully processed and uploaded HLS video to folder: processed/{}/", lessonId);
+                transcodeSuccess = true;
             } else {
                 log.warn("No HLS files found in local directory: {}", localHlsFolder.getAbsolutePath());
             }
 
+            if (transcodeSuccess) {
+                // Delete temporary raw video from MinIO after successful transcode and upload
+                log.info("Deleting temporary video from MinIO: bucket={}, objectKey={}", event.getBucketName(), event.getObjectKey());
+                minioClient.removeObject(
+                        RemoveObjectArgs.builder()
+                                .bucket(event.getBucketName())
+                                .object(event.getObjectKey())
+                                .build()
+                );
+                publishProcessedEvent(lessonId, event.getBucketName(), "SUCCESS");
+            } else {
+                publishProcessedEvent(lessonId, event.getBucketName(), "FAILED");
+            }
+
         } catch (Exception e) {
             log.error("Error occurred while processing HLS video upload event", e);
+            publishProcessedEvent(lessonId, event.getBucketName(), "FAILED");
         } finally {
             // Step 5: Clean up temporary files and folder on host
             cleanupLocalFile(localInputFile);
             cleanupLocalDirectory(localHlsFolder);
+        }
+    }
+
+    private void publishProcessedEvent(String lessonId, String bucketName, String status) {
+        try {
+            VideoProcessedEvent processedEvent = VideoProcessedEvent.builder()
+                    .lessonId(lessonId)
+                    .bucketName(bucketName)
+                    .status(status)
+                    .build();
+            log.info("Publishing VideoProcessedEvent: lessonId={}, status={}", lessonId, status);
+            eventPublisher.publish(Exchanges.MEDIA, RoutingKeys.VIDEO_PROCESSED, processedEvent);
+        } catch (Exception e) {
+            log.error("Failed to publish VideoProcessedEvent for lessonId={}", lessonId, e);
         }
     }
 

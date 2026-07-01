@@ -83,7 +83,7 @@ public class UploadServiceImpl implements UploadService {
     }
 
     @Override
-    public UploadResponse uploadVideo(MultipartFile file) {
+    public UploadResponse uploadVideo(MultipartFile file, String lessonId) {
         if (file == null || file.isEmpty()) {
             log.error("Uploaded video file is null or empty");
             throw new HttpException(ValidationError.INVALID_REQUEST_BODY);
@@ -120,6 +120,7 @@ public class UploadServiceImpl implements UploadService {
 
             // Publish event to RabbitMQ
             VideoUploadedEvent event = VideoUploadedEvent.builder()
+                    .lessonId(lessonId)
                     .objectKey(objectKey)
                     .bucketName(bucketName)
                     .originalFilename(originalFilename)

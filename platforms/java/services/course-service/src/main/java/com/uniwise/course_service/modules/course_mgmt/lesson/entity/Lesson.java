@@ -45,7 +45,7 @@ public class Lesson {
      * UUID của Video trên MinIO (nếu VIDEO)
      * hoặc ID của Quiz (nếu QUIZ)
      */
-    @Column(name = "content_reference", nullable = false, length = 36)
+    @Column(name = "content_reference", nullable = false, length = 255)
     private String contentReference;
  
     /**

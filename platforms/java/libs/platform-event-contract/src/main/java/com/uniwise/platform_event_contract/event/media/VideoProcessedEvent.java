@@ -9,11 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class VideoUploadedEvent {
+public class VideoProcessedEvent {
     private String lessonId;
-    private String objectKey;
     private String bucketName;
-    private String originalFilename;
-    private String contentType;
-    private Long size;
+    private String status; // SUCCESS or FAILED
 }

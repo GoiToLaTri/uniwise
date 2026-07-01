@@ -5,5 +5,5 @@ import com.uniwise.common.dto.response.UploadResponse;
 
 public interface UploadService {
     UploadResponse uploadThumbnail(MultipartFile file);
-    UploadResponse uploadVideo(MultipartFile file);
+    UploadResponse uploadVideo(MultipartFile file, String lessonId);
 }

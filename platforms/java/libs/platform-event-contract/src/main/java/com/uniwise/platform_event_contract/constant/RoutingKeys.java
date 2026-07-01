@@ -14,4 +14,6 @@ public final class RoutingKeys {
 
     // Media routing keys
     public static final String VIDEO_UPLOADED = "media.video.uploaded";
+    public static final String VIDEO_PROCESSED = "media.video.processed";
+    public static final String VIDEO_TRANSCODED = "media.video.transcoded";
 }

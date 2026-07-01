@@ -17,6 +17,8 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class LessonCreateRequest {
 
+    String publicId; // Optional client-supplied publicId for the lesson
+
     @NotBlank(message = "LESSON_TITLE_REQUIRED")
     String title;
 

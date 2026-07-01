@@ -120,6 +120,12 @@
 			<artifactId>jwt-security-starter</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
+
+		<dependency>
+			<groupId>com.uniwise</groupId>
+			<artifactId>platform-event-starter</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
 
 	<build>
