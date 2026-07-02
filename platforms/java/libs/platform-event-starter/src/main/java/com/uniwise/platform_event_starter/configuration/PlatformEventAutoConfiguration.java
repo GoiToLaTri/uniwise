@@ -3,14 +3,15 @@ package com.uniwise.platform_event_starter.configuration;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.json.JsonMapper;
 import com.uniwise.platform_event_contract.constant.Exchanges;
 import com.uniwise.platform_event_starter.publisher.EventPublisher;
 import com.uniwise.platform_event_starter.publisher.RabbitEventPublisher;
@@ -26,8 +27,11 @@ public class PlatformEventAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public MessageConverter messageConverter(ObjectMapper objectMapper) {
-        return new Jackson2JsonMessageConverter(objectMapper);
+    public MessageConverter messageConverter() {
+        JsonMapper jsonMapper = JsonMapper.builder()
+                .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .build();
+        return new JacksonJsonMessageConverter(jsonMapper);
     }
 
     @Bean
