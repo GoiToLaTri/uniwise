@@ -170,9 +170,6 @@ public class LessonServiceImpl implements LessonService {
             throw new HttpException(LessonError.LESSON_SORT_ORDER_CONFLICT);
         }
 
-        // Keep track of status change to trigger video processing updates later if status changes from ready/processing
-        String oldStatus = lesson.getStatus().name();
-
         lessonMapper.updateEntity(request, lesson);
         Lesson saved = lessonRepository.save(lesson);
         log.info("Lesson updated successfully with id: {}, publicId: {}", saved.getId(), saved.getPublicId());

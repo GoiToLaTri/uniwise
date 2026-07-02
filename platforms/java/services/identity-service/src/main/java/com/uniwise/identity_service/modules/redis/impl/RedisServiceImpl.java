@@ -1,5 +1,6 @@
 package com.uniwise.identity_service.modules.redis.impl;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -42,7 +43,7 @@ public class RedisServiceImpl implements RedisService {
     public <T> void setKey(String key, T value, Long ttl, TimeUnit timeUnit) {
         try {
             String jsonValue = redisObjectMapper.writeValueAsString(value);
-            template.opsForValue().set(key, jsonValue, ttl, timeUnit);
+            template.opsForValue().set(key, jsonValue, Duration.of(ttl, timeUnit.toChronoUnit()));
         } catch (JsonProcessingException e) {
             log.error("Error serializing value for key {}: {}", key, e.getMessage());
             throw new RuntimeException("Failed to serialize value for Redis", e);
