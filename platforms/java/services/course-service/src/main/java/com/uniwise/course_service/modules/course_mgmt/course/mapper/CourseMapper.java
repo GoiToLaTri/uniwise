@@ -1,6 +1,7 @@
 package com.uniwise.course_service.modules.course_mgmt.course.mapper;
 
 import org.mapstruct.BeanMapping;
+import org.mapstruct.InjectionStrategy;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -13,12 +14,8 @@ import com.uniwise.common.dto.response.CourseResponse;
 import com.uniwise.course_service.modules.course_mgmt.course.entity.Course;
 import com.uniwise.course_service.modules.course_mgmt.section.mapper.SectionMapper;
 
-@Mapper(
-        componentModel = "spring",
-        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
-        unmappedTargetPolicy = ReportingPolicy.IGNORE,
-        uses = {SectionMapper.class}
-)
+@Mapper(componentModel = "spring", injectionStrategy = InjectionStrategy.CONSTRUCTOR, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE, unmappedTargetPolicy = ReportingPolicy.IGNORE, uses = {
+        SectionMapper.class })
 public interface CourseMapper {
 
     // ===== CREATE REQUEST → ENTITY =====
