@@ -13,7 +13,11 @@ import com.uniwise.common.dto.response.RoleAdminResponse;
 import com.uniwise.common.dto.response.RoleResponse;
 import com.uniwise.identity_service.modules.role.entity.Role;
 
-@Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE, unmappedTargetPolicy = ReportingPolicy.IGNORE)
+import org.mapstruct.InjectionStrategy;
+import com.uniwise.identity_service.modules.permission.mapper.PermissionMapper;
+
+@Mapper(componentModel = "spring", injectionStrategy = InjectionStrategy.CONSTRUCTOR, uses = {
+        PermissionMapper.class }, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE, unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface RoleMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
