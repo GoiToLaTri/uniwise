@@ -59,6 +59,20 @@ public class CourseController {
                 .build();
     }
 
+    // ===== GET /api/v1/courses/published =====
+    @GetMapping("/published")
+    public ApiResponse<PageResponse<CourseResponse>> getPublished(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+        return ApiResponse.<PageResponse<CourseResponse>>builder()
+                .code("OK")
+                .message("Published courses retrieved successfully")
+                .data(courseService.getAll(page, size, null, "PUBLISHED", null, sortBy, sortDir))
+                .build();
+    }
+
     // ===== GET /api/v1/courses =====
     @GetMapping
     public ApiResponse<PageResponse<CourseResponse>> getAll(

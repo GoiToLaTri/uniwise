@@ -15,14 +15,13 @@ public interface CourseRepository extends JpaRepository<Course, String> {
     boolean existsByPublicId(String publicId);
 
     @Query("SELECT c FROM Course c WHERE " +
-           "c.isActive = true " +
-           "AND (:creatorId IS NULL OR c.creatorId = :creatorId) " +
-           "AND (:status IS NULL OR c.status = :status) " +
-           "AND (:keyword IS NULL OR LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+            "c.isActive = true " +
+            "AND (:creatorId IS NULL OR c.creatorId = :creatorId) " +
+            "AND (:status IS NULL OR c.status = :status) " +
+            "AND (:keyword IS NULL OR LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     Page<Course> searchCourses(
             @Param("creatorId") String creatorId,
             @Param("status") com.uniwise.common.enums.ECourseStatus status,
             @Param("keyword") String keyword,
-            Pageable pageable
-    );
+            Pageable pageable);
 }

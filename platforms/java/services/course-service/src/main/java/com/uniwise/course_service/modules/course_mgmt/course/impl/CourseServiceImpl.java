@@ -99,7 +99,8 @@ public class CourseServiceImpl implements CourseService {
             String creatorId, String status, String keyword,
             String sortBy, String sortDir) {
 
-        log.info("Listing courses - page={}, size={}, creatorId={}, status={}, keyword='{}'", page, size, creatorId, status, keyword);
+        log.info("Listing courses - page={}, size={}, creatorId={}, status={}, keyword='{}'", page, size, creatorId,
+                status, keyword);
 
         String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
         String orderBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
@@ -108,8 +109,7 @@ public class CourseServiceImpl implements CourseService {
         Pageable pageable = PageRequest.of(
                 Math.max(0, page),
                 Math.max(1, size),
-                Sort.by(direction, orderBy)
-        );
+                Sort.by(direction, orderBy));
 
         ECourseStatus statusEnum = null;
         if (status != null && !status.isBlank()) {

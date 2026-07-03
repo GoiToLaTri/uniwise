@@ -36,6 +36,9 @@ public class SecurityConfig {
     private static final Endpoint[] PUBLIC_ENDPOINT = {
             new Endpoint("/v3/api-docs", HttpMethod.GET),
             new Endpoint("/api/v1/profiles/public/{publicId}", HttpMethod.GET),
+            new Endpoint("/api/v1/courses/published", HttpMethod.GET),
+            new Endpoint("/api/v1/price-tiers", HttpMethod.GET),
+            new Endpoint("/api/v1/price-tiers/{id}", HttpMethod.GET),
     };
 
     @Bean
