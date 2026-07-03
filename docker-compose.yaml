@@ -66,8 +66,7 @@ services:
       context: . # thư mục chứa Dockerfile của gateway
       dockerfile: gateway/Dockerfile # tên file Dockerfile (mặc định)
     container_name: gateway-service
-    ports:
-      - "8080:8080" # map port host:container
+    # KHÔNG có ports - không expose ra ngoài host, chỉ truy cập qua nginx
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8080
@@ -114,6 +113,68 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  course-service:
+    build:
+      context: .  # context là thư mục root
+      dockerfile: platforms/java/services/course-service/Dockerfile
+    container_name: course-service
+    # KHÔNG có ports - không expose ra ngoài host
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8082
+      - SPRING_CLOUD_DISCOVERY_ENABLED=false  # nếu dùng gateway mà ko cần discovery
+    networks:
+      - uniwise
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  media-service:
+    build:
+      context: .  # context là thư mục root
+      dockerfile: platforms/java/services/media-service/Dockerfile
+    container_name: media-service
+    # KHÔNG có ports - không expose ra ngoài host
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8083
+      - SPRING_CLOUD_DISCOVERY_ENABLED=false  # nếu dùng gateway mà ko cần discovery
+    networks:
+      - uniwise
+    restart: unless-stopped
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  ffmpeg-worker:
+    build:
+      context: .  # context là thư mục root
+      dockerfile: platforms/java/workers/ffmpeg-worker/Dockerfile
+    container_name: ffmpeg-worker
+    # KHÔNG có ports - không expose ra ngoài host
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    volumes:
+      - ./temp:/temp
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - uniwise
+    restart: unless-stopped
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      ffmpeg:
+        condition: service_started
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     ports:
