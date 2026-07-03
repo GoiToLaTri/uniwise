@@ -23,6 +23,7 @@ public interface RoleMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "permissions", ignore = true)
+    @Mapping(target = "isActive", defaultValue = "true")
     Role toEntity(RoleCreateRequest request);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
