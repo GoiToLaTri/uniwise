@@ -84,7 +84,7 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
-    @PreAuthorize("hasAuthority('profile:get-by-account-id')")
+    // @PreAuthorize("hasAuthority('profile:get-by-account-id')")
     @Transactional(readOnly = true)
     public ProfileResponse getProfileByAccountId(String accountId) {
         return profileRepository.findByAccountId(accountId)
