@@ -37,6 +37,13 @@
 				thằng Microservice nào dùng tôi thì thằng đó phải tự có sẵn thư viện này rồi.
 		-->
 		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-api</artifactId>
+			<version>1.69.0</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter</artifactId>
 		</dependency>

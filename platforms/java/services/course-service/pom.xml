@@ -123,8 +123,6 @@
 	</dependencies>
 
 	<build>
-		<outputDirectory>${project.build.directory}/classes-maven</outputDirectory>
-		<testOutputDirectory>${project.build.directory}/test-classes-maven</testOutputDirectory>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>

@@ -18,19 +18,13 @@ public class ProfileGrpcController extends ProfileServiceImplBase {
 
     @Override
     public void createProfile(CreateProfileRequest request, StreamObserver<CreateProfileResponse> responseObserver) {
-        try {
-            // 1. Gọi xuống lớp nghiệp vụ để xử lý
-            CreateProfileResponse response = profileGrpcService.create(request);
+        // 1. Gọi xuống lớp nghiệp vụ để xử lý
+        CreateProfileResponse response = profileGrpcService.create(request);
 
-            // 2. Trả kết quả về cho Client qua StreamObserver
-            responseObserver.onNext(response);
+        // 2. Trả kết quả về cho Client qua StreamObserver
+        responseObserver.onNext(response);
 
-            // 3. Kết thúc lời gọi hàm thành công
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            // Nếu có lỗi, ExceptionHandlingInterceptor của starter sẽ bắt được,
-            // nhưng cậu cũng có thể chủ động trả về lỗi gRPC tại đây nếu muốn.
-            responseObserver.onError(e);
-        }
+        // 3. Kết thúc lời gọi hàm thành công
+        responseObserver.onCompleted();
     }
 }

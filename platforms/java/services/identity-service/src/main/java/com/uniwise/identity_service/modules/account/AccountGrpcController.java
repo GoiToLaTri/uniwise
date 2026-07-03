@@ -21,24 +21,16 @@ public class AccountGrpcController extends AccountServiceImplBase {
     @Override
     public void assignRoles(AssignRolesRequest request,
             StreamObserver<AssignRolesResponse> responseObserver) {
-        try {
-            AssignRolesResponse response = accountGrpcService.assignRoles(request);
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onError(e);
-        }
+        AssignRolesResponse response = accountGrpcService.assignRoles(request);
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
     }
 
     @Override
     public void revokeRoles(RevokeRolesRequest request,
             StreamObserver<RevokeRolesResponse> responseObserver) {
-        try {
-            RevokeRolesResponse response = accountGrpcService.revokeRoles(request);
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
-        } catch (Exception e) {
-            responseObserver.onError(e);
-        }
+        RevokeRolesResponse response = accountGrpcService.revokeRoles(request);
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
     }
 }

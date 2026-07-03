@@ -51,7 +51,7 @@ public class ProfileServiceImpl implements ProfileService {
     // TODO: Method này sẽ được thay thế bằng elasticsearch hoặc search engine khác
     // trong tương lai để có hiệu năng tốt hơn
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
     public PageResponse<ProfileResponse> getAllProfiles(int page, int size, String keyword,
             ProfileType profileType,
