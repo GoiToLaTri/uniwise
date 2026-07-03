@@ -25,7 +25,7 @@ import com.uniwise.user_service.modules.instructor.entity.InstructorProfile;
 @Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE, unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface InstructorMapper {
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "accountId", ignore = true)
+    @Mapping(target = "profile", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "reviewComment", ignore = true)
     @Mapping(target = "appliedAt", ignore = true)
@@ -37,7 +37,7 @@ public interface InstructorMapper {
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "accountId", ignore = true)
+    @Mapping(target = "profile", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "reviewComment", ignore = true)
     @Mapping(target = "appliedAt", ignore = true)
@@ -49,6 +49,7 @@ public interface InstructorMapper {
     @Mapping(target = "expertises", ignore = true)
     void updateEntity(InstructorProfileUpdateRequest request, @MappingTarget InstructorProfile profile);
 
+    @Mapping(target = "accountId", source = "profile.accountId")
     InstructorProfileResponse toResponse(InstructorProfile profile);
 
     DegreeCertificate toDegreeEntity(DegreeDto dto);

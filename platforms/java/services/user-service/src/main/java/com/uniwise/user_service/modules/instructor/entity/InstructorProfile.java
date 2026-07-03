@@ -18,8 +18,11 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import com.uniwise.user_service.modules.profile.entity.Profile;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -41,8 +44,9 @@ public class InstructorProfile {
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
 
-    @Column(name = "account_id", nullable = false, unique = true)
-    String accountId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "profile_id", referencedColumnName = "id", unique = true, nullable = false)
+    Profile profile;
 
     @Column(name = "public_id", nullable = false, unique = true, length = 100)
     String publicId;

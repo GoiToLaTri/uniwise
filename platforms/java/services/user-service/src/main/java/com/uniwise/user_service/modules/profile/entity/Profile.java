@@ -7,14 +7,18 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import com.uniwise.user_service.modules.profile.enums.ProfileType;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import com.uniwise.user_service.modules.instructor.entity.InstructorProfile;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -63,4 +67,7 @@ public class Profile {
     @UpdateTimestamp
     @Column(name = "updated_at")
     LocalDateTime updatedAt;
+
+    @OneToOne(mappedBy = "profile", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    InstructorProfile instructorProfile;
 }

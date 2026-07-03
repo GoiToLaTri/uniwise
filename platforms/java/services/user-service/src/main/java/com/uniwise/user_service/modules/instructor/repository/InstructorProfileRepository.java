@@ -15,11 +15,16 @@ import com.uniwise.user_service.modules.instructor.enums.EInstructorProfileStatu
 
 
 public interface InstructorProfileRepository extends JpaRepository<InstructorProfile, String> {
-    Optional<InstructorProfile> findByAccountId(String accountId);
+    @Query("SELECT i FROM InstructorProfile i WHERE i.profile.accountId = :accountId")
+    Optional<InstructorProfile> findByAccountId(@Param("accountId") String accountId);
+
+    @Query("SELECT i FROM InstructorProfile i WHERE i.profile.id = :profileId")
+    Optional<InstructorProfile> findByProfileId(@Param("profileId") String profileId);
     
     Optional<InstructorProfile> findByPublicId(String publicId);
 
-    boolean existsByAccountId(String accountId);
+    @Query("SELECT COUNT(i) > 0 FROM InstructorProfile i WHERE i.profile.accountId = :accountId")
+    boolean existsByAccountId(@Param("accountId") String accountId);
 
     boolean existsByPublicId(String publicId);
     

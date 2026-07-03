@@ -13,7 +13,7 @@ public interface InstructorService {
 
     InstructorProfileResponse updateMyInstructorProfile(InstructorProfileUpdateRequest request);
 
-    InstructorProfileResponse getInstructorProfileByPublicId(String publicId);
+    InstructorProfileResponse getInstructorProfileByProfileId(String profileId);
 
     InstructorProfileResponse getInstructorProfileByAccountId(String accountId);
 

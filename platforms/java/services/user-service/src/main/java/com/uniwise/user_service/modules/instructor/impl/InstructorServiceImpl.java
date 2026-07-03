@@ -25,6 +25,7 @@ import com.uniwise.common.dto.response.InstructorProfileResponse;
 import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.InstructorError;
+import com.uniwise.common.exception.errors.ProfileError;
 import com.uniwise.grpc_spring_boot_starter.annotation.GrpcClient;
 import com.uniwise.identity.account.v1.AccountServiceGrpc.AccountServiceBlockingStub;
 import com.uniwise.identity.account.v1.AssignRolesRequest;
@@ -37,6 +38,8 @@ import com.uniwise.user_service.modules.instructor.enums.EInstructorProfileStatu
 import com.uniwise.user_service.modules.instructor.mapper.InstructorMapper;
 import com.uniwise.user_service.modules.instructor.repository.InstructorProfileRepository;
 import com.uniwise.user_service.modules.profile.ProfileService;
+import com.uniwise.user_service.modules.profile.entity.Profile;
+import com.uniwise.user_service.modules.profile.repository.ProfileRepository;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +55,7 @@ public class InstructorServiceImpl implements InstructorService {
     InstructorProfileRepository instructorProfileRepository;
     InstructorMapper instructorMapper;
     ProfileService profileService;
+    ProfileRepository profileRepository;
 
     @NonFinal
     @GrpcClient("identity-service")
@@ -66,8 +70,11 @@ public class InstructorServiceImpl implements InstructorService {
             throw new HttpException(InstructorError.INSTRUCTOR_PROFILE_ALREADY_EXISTS);
         }
 
+        Profile profile = profileRepository.findByAccountId(accountId)
+                .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
+
         InstructorProfile instructorProfile = instructorMapper.toEntity(request);
-        instructorProfile.setAccountId(accountId);
+        instructorProfile.setProfile(profile);
         instructorProfile.setPublicId(generatePublicId());
         instructorProfile.setStatus(EInstructorProfileStatus.PENDING);
         instructorProfile.setAppliedAt(LocalDateTime.now());
@@ -118,8 +125,8 @@ public class InstructorServiceImpl implements InstructorService {
 
     @Override
     @Transactional(readOnly = true)
-    public InstructorProfileResponse getInstructorProfileByPublicId(String publicId) {
-        InstructorProfile instructorProfile = instructorProfileRepository.findByPublicId(publicId)
+    public InstructorProfileResponse getInstructorProfileByProfileId(String profileId) {
+        InstructorProfile instructorProfile = instructorProfileRepository.findByProfileId(profileId)
                 .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));
 
         if (instructorProfile.getStatus() != EInstructorProfileStatus.APPROVED) {
@@ -149,17 +156,17 @@ public class InstructorServiceImpl implements InstructorService {
         ProfileUpdateRequest profileUpdateRequest = ProfileUpdateRequest.builder()
                 .profileType("INSTRUCTOR")
                 .build();
-        profileService.updateProfileByAccountId(instructorProfile.getAccountId(), profileUpdateRequest);
+        profileService.updateProfileByAccountId(instructorProfile.getProfile().getAccountId(), profileUpdateRequest);
 
         AssignRolesRequest assignRolesRequest = AssignRolesRequest.newBuilder()
-                .setAccountId(instructorProfile.getAccountId())
+                .setAccountId(instructorProfile.getProfile().getAccountId())
                 .addRoleNames("INSTRUCTOR")
                 .build();
 
         // Gọi grpc set lại vai trò cho account
         accountServiceClient.assignRoles(assignRolesRequest);
         // Response có thể dùng nếu cần kiểm tra trạng thái hoặc log
-        log.info("Assigned role INSTRUCTOR to account {} via identity-service grpc", instructorProfile.getAccountId());
+        log.info("Assigned role INSTRUCTOR to account {} via identity-service grpc", instructorProfile.getProfile().getAccountId());
 
         return instructorMapper.toResponse(instructorProfileRepository.save(instructorProfile));
     }
@@ -206,7 +213,7 @@ public class InstructorServiceImpl implements InstructorService {
 
         // Gọi grpc để gỡ role INSTRUCTOR của account
         RevokeRolesRequest revokeRolesRequest = RevokeRolesRequest.newBuilder()
-                .setAccountId(instructorProfile.getAccountId())
+                .setAccountId(instructorProfile.getProfile().getAccountId())
                 .addRoleNames("INSTRUCTOR")
                 .build();
         accountServiceClient.revokeRoles(revokeRolesRequest);
@@ -237,7 +244,7 @@ public class InstructorServiceImpl implements InstructorService {
 
         // Gọi grpc để set lại role INSTRUCTOR của account
         AssignRolesRequest assignRolesRequest = AssignRolesRequest.newBuilder()
-                .setAccountId(instructorProfile.getAccountId())
+                .setAccountId(instructorProfile.getProfile().getAccountId())
                 .addRoleNames("INSTRUCTOR")
                 .build();
         accountServiceClient.assignRoles(assignRolesRequest);

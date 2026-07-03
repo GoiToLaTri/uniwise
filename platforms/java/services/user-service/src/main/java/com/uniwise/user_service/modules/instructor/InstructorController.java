@@ -73,12 +73,12 @@ public class InstructorController {
                 .build();
     }
 
-    @GetMapping("/public/{publicId}")
-    public ApiResponse<InstructorProfileResponse> getInstructorProfileByPublicId(@PathVariable String publicId) {
+    @GetMapping("/public/{profileId}")
+    public ApiResponse<InstructorProfileResponse> getInstructorProfileByProfileId(@PathVariable String profileId) {
         return ApiResponse.<InstructorProfileResponse>builder()
                 .code("OK")
-                .data(instructorService.getInstructorProfileByPublicId(publicId))
-                .message("Get instructor profile by publicId success")
+                .data(instructorService.getInstructorProfileByProfileId(profileId))
+                .message("Get instructor profile by profileId success")
                 .build();
     }
 
