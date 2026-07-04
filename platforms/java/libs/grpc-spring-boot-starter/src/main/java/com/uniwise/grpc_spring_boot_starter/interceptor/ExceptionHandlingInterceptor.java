@@ -151,7 +151,7 @@ public class ExceptionHandlingInterceptor implements ServerInterceptor {
             case NOT_FOUND -> Status.Code.NOT_FOUND;
             case CONFLICT -> Status.Code.ALREADY_EXISTS;
             case TOO_MANY_REQUESTS -> Status.Code.RESOURCE_EXHAUSTED;
-            case PAYLOAD_TOO_LARGE -> Status.Code.OUT_OF_RANGE;
+            case CONTENT_TOO_LARGE -> Status.Code.OUT_OF_RANGE;
             case NOT_IMPLEMENTED -> Status.Code.UNIMPLEMENTED;
             case SERVICE_UNAVAILABLE -> Status.Code.UNAVAILABLE;
             case GATEWAY_TIMEOUT -> Status.Code.DEADLINE_EXCEEDED;
