@@ -1,4 +1,4 @@
-package com.uniwise.course_service.configuration;
+package com.uniwise.course_service.configurations;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;

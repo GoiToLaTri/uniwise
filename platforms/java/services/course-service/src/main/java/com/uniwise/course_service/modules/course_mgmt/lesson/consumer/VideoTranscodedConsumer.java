@@ -1,6 +1,6 @@
 package com.uniwise.course_service.modules.course_mgmt.lesson.consumer;
 
-import com.uniwise.course_service.configuration.RabbitMQConfig;
+import com.uniwise.course_service.configurations.RabbitMQConfig;
 import com.uniwise.course_service.modules.course_mgmt.lesson.entity.Lesson;
 import com.uniwise.course_service.modules.course_mgmt.lesson.repository.LessonRepository;
 import com.uniwise.platform_event_contract.envelope.EventEnvelope;
