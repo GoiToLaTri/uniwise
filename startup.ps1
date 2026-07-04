@@ -18,11 +18,11 @@ docker compose -p uniwise up -d mysql redis redisinsight nginx rabbitmq minio ff
 # docker compose -p uniwise up -d
 
 # 2. Build cac thu vien dung chung (local libs)
-# Write-Host ">>> Build local libraries..." -ForegroundColor Green
-# mvn -f (Join-Path $scriptPath "platforms/java/libs/common/pom.xml") clean install -DskipTests
-# mvn -f (Join-Path $scriptPath "platforms/java/libs/grpc-contracts/pom.xml") clean install -DskipTests
-# mvn -f (Join-Path $scriptPath "platforms/java/libs/grpc-spring-boot-starter/pom.xml") clean install -DskipTests
-# mvn -f (Join-Path $scriptPath "platforms/java/libs/jwt-security-starter/pom.xml") clean install -DskipTests
+Write-Host ">>> Build local libraries..." -ForegroundColor Green
+mvn -f (Join-Path $scriptPath "platforms/java/libs/common/pom.xml") clean install -DskipTests
+mvn -f (Join-Path $scriptPath "platforms/java/libs/grpc-contracts/pom.xml") clean install -DskipTests
+mvn -f (Join-Path $scriptPath "platforms/java/libs/grpc-spring-boot-starter/pom.xml") clean install -DskipTests
+mvn -f (Join-Path $scriptPath "platforms/java/libs/jwt-security-starter/pom.xml") clean install -DskipTests
 
 # 3. Khoi chay cac service Spring Boot (Su dung Windows Terminal tab neu co)
 Write-Host ">>> Khoi chay cac service..." -ForegroundColor Green
