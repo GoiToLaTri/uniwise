@@ -18,4 +18,7 @@ public class LessonResponse {
     private String contentReference;
     private String status;
     private Integer sortOrder;
+    private Boolean isPreview;
+    private Boolean isCompleted;
+    private Integer lastWatchedPosition;
 }

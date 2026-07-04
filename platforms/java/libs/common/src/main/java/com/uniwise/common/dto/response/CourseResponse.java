@@ -26,4 +26,8 @@ public class CourseResponse {
     private Instant createdAt;
     private Instant updatedAt;
     private List<SectionResponse> sections;
+    private Boolean isEnrolled;
+    private Double progressPercentage;
+    private Integer completedLessonsCount;
+    private Integer totalLessonsCount;
 }

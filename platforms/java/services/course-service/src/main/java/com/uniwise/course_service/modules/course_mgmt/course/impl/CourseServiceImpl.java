@@ -2,6 +2,8 @@ package com.uniwise.course_service.modules.course_mgmt.course.impl;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -27,6 +29,10 @@ import com.uniwise.course_service.modules.course_mgmt.course.mapper.CourseMapper
 import com.uniwise.course_service.modules.course_mgmt.course.repository.CourseRepository;
 import com.uniwise.course_service.modules.pricing.entity.PriceTier;
 import com.uniwise.course_service.modules.pricing.repository.PriceTierRepository;
+import com.uniwise.course_service.modules.course_mgmt.lesson.repository.LessonRepository;
+import com.uniwise.course_service.modules.course_mgmt.lesson.entity.Lesson;
+import com.uniwise.course_service.modules.learning_progress.entity.UserLesson;
+import com.uniwise.course_service.modules.learning_progress.service.LearningProgressService;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +48,8 @@ public class CourseServiceImpl implements CourseService {
     CourseRepository courseRepository;
     PriceTierRepository priceTierRepository;
     CourseMapper courseMapper;
+    LearningProgressService learningProgressService;
+    LessonRepository lessonRepository;
 
     // ===== CREATE =====
     @Override
@@ -88,7 +96,102 @@ public class CourseServiceImpl implements CourseService {
     @Transactional(readOnly = true)
     public CourseResponse getByPublicId(String publicId) {
         log.info("Fetching course by publicId: {}", publicId);
-        return courseMapper.toResponse(getEntityByPublicId(publicId));
+        Course course = getEntityByPublicId(publicId);
+        
+        CourseResponse response = courseMapper.toResponse(course);
+        
+        String currentUserId = getCurrentAccountId();
+        
+        boolean isCreator = course.getCreatorId() != null && course.getCreatorId().equals(currentUserId);
+        boolean isAdmin = hasAdminAuthority();
+        boolean isEnrolled = false;
+
+        if (currentUserId != null && !currentUserId.isBlank()) {
+            isEnrolled = isCreator || isAdmin || learningProgressService.isEnrolled(currentUserId, course.getId());
+        }
+        
+        response.setIsEnrolled(isEnrolled);
+
+        int totalLessons = 0;
+        if (course.getSections() != null) {
+            for (var section : course.getSections()) {
+                if (section.getLessons() != null) {
+                    totalLessons += section.getLessons().size();
+                }
+            }
+        }
+        response.setTotalLessonsCount(totalLessons);
+
+        if (isEnrolled) {
+            List<UserLesson> userLessons = learningProgressService.getUserLessonsProgress(currentUserId, course.getId());
+            Map<String, UserLesson> progressMap = userLessons.stream()
+                    .collect(Collectors.toMap(ul -> ul.getLesson().getId(), ul -> ul, (ul1, ul2) -> ul1));
+            
+            int completedCount = 0;
+
+            if (response.getSections() != null) {
+                for (var secResponse : response.getSections()) {
+                    if (secResponse.getLessons() != null) {
+                        for (var lesResponse : secResponse.getLessons()) {
+                            Lesson lessonEntity = lessonRepository.findById(lesResponse.getId()).orElse(null);
+                            if (lessonEntity != null) {
+                                lesResponse.setIsPreview(lessonEntity.getIsPreview());
+                            } else {
+                                lesResponse.setIsPreview(false);
+                            }
+                            
+                            UserLesson progress = progressMap.get(lesResponse.getId());
+                            if (progress != null) {
+                                lesResponse.setIsCompleted(progress.getIsCompleted());
+                                lesResponse.setLastWatchedPosition(progress.getLastWatchedPosition());
+                                if (Boolean.TRUE.equals(progress.getIsCompleted())) {
+                                    completedCount++;
+                                }
+                            } else {
+                                lesResponse.setIsCompleted(false);
+                                lesResponse.setLastWatchedPosition(0);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            response.setCompletedLessonsCount(completedCount);
+            response.setProgressPercentage(totalLessons > 0 ? (double) completedCount * 100 / totalLessons : 0.0);
+
+        } else {
+            if (response.getSections() != null) {
+                for (var secResponse : response.getSections()) {
+                    if (secResponse.getLessons() != null) {
+                        for (var lesResponse : secResponse.getLessons()) {
+                            Lesson lessonEntity = lessonRepository.findById(lesResponse.getId()).orElse(null);
+                            boolean isPreview = lessonEntity != null && Boolean.TRUE.equals(lessonEntity.getIsPreview());
+                            
+                            lesResponse.setIsPreview(isPreview);
+                            
+                            if (!isPreview) {
+                                lesResponse.setContentReference(null);
+                            }
+                            
+                            lesResponse.setIsCompleted(null);
+                            lesResponse.setLastWatchedPosition(null);
+                        }
+                    }
+                }
+            }
+            
+            response.setCompletedLessonsCount(0);
+            response.setProgressPercentage(0.0);
+        }
+        
+        return response;
+    }
+
+    private boolean hasAdminAuthority() {
+        org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return false;
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("admin:all"));
     }
 
     // ===== GET ALL (paginated/filtered) =====

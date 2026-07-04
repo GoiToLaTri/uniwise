@@ -56,6 +56,10 @@ public class Lesson {
     @Column(name = "status", nullable = false, length = 15)
     private LessonStatus status = LessonStatus.PROCESSING;
  
+    @Builder.Default
+    @Column(name = "is_preview", nullable = false)
+    private Boolean isPreview = false;
+
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
  
