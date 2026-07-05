@@ -10,6 +10,8 @@ option java_outer_classname = "CourseServiceProto";
 service CourseGrpcService {
   // Retrieve course details including price and title
   rpc GetCoursePrice (GetCoursePriceRequest) returns (GetCoursePriceResponse);
+  // Check if a user has access to a specific lesson
+  rpc CheckLessonAccess (CheckLessonAccessRequest) returns (CheckLessonAccessResponse);
 }
 
 message GetCoursePriceRequest {
@@ -21,4 +23,13 @@ message GetCoursePriceResponse {
   int64 price = 2; // price in VND
   string title = 3;
   bool is_active = 4;
+}
+
+message CheckLessonAccessRequest {
+  string account_id = 1;
+  string lesson_id = 2;
+}
+
+message CheckLessonAccessResponse {
+  bool has_access = 1;
 }

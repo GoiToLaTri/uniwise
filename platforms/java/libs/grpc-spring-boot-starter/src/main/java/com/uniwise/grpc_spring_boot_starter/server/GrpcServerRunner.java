@@ -67,6 +67,12 @@ public class GrpcServerRunner implements SmartLifecycle {
      */
     @Override
     public void start() {
+        if (port <= 0) {
+            log.info("gRPC server is disabled (port = {}). Skipping server startup.", port);
+            isRunning = false;
+            return;
+        }
+
         log.info("Starting gRPC Server on port: {}", port);
         ServerBuilder<?> serverBuilder = ServerBuilder.forPort(port);
 
