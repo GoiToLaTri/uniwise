@@ -154,6 +154,27 @@ services:
       minio:
         condition: service_healthy
 
+  payment-service:
+    build:
+      context: .  # context là thư mục root
+      dockerfile: platforms/java/services/payment-service/Dockerfile
+    container_name: payment-service
+    # KHÔNG có ports - không expose ra ngoài host
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8085
+      - SPRING_CLOUD_DISCOVERY_ENABLED=false  # nếu dùng gateway mà ko cần discovery
+    networks:
+      - uniwise
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
   ffmpeg-worker:
     build:
       context: .  # context là thư mục root

@@ -38,8 +38,8 @@ public interface LessonMapper {
     @Mapping(target = "userLessons", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "lessonType", expression = "java(request.getLessonType() == null ? null : mapLessonType(request.getLessonType()))")
-    @Mapping(target = "status", expression = "java(request.getStatus() == null ? null : mapLessonStatus(request.getStatus()))")
+    @Mapping(target = "lessonType", expression = "java(request.getLessonType() == null ? lesson.getLessonType() : mapLessonType(request.getLessonType()))")
+    @Mapping(target = "status", expression = "java(request.getStatus() == null ? lesson.getStatus() : mapLessonStatus(request.getStatus()))")
     void updateEntity(LessonUpdateRequest request, @MappingTarget Lesson lesson);
 
     // ===== ENTITY → RESPONSE =====
