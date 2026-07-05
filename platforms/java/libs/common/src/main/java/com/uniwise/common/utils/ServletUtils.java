@@ -25,13 +25,20 @@ public class ServletUtils {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
             // X-Forwarded-For có thể chứa danh sách IP, lấy cái đầu tiên
-            remoteAddr = xForwardedFor.split(",")[0];
+            remoteAddr = xForwardedFor.split(",")[0].trim();
         }
 
         if (remoteAddr.isEmpty()) {
             remoteAddr = request.getRemoteAddr();
         }
 
+        // Chuẩn hóa: VNPay không chấp nhận địa chỉ IPv6 loopback
+        // Spring Boot trả về "0:0:0:0:0:0:0:1" hoặc "::1" khi test local
+        if ("0:0:0:0:0:0:0:1".equals(remoteAddr) || "::1".equals(remoteAddr)) {
+            remoteAddr = "127.0.0.1";
+        }
+
         return remoteAddr;
     }
+
 }

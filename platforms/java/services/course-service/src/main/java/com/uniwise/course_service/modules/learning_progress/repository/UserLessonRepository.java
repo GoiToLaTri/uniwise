@@ -11,6 +11,6 @@ public interface UserLessonRepository extends JpaRepository<UserLesson, UserLess
            "JOIN ul.lesson l " +
            "JOIN l.section s " +
            "JOIN s.course c " +
-           "WHERE ul.userId = :userId AND c.id = :courseId")
-    List<UserLesson> findByUserIdAndCourseId(@Param("userId") String userId, @Param("courseId") String courseId);
+           "WHERE ul.accountId = :accountId AND c.id = :courseId")
+    List<UserLesson> findByAccountIdAndCourseId(@Param("accountId") String accountId, @Param("courseId") String courseId);
 }

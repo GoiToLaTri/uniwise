@@ -8,6 +8,9 @@ import com.uniwise.course_service.modules.learning_progress.entity.UserCourse;
 public interface UserCourseRepository extends JpaRepository<UserCourse, UserCourse.UserCourseId> {
     @Query("SELECT COUNT(uc) > 0 FROM UserCourse uc " +
            "JOIN uc.course c " +
-           "WHERE uc.userId = :userId AND c.id = :courseId")
-    boolean existsByUserIdAndCourseId(@Param("userId") String userId, @Param("courseId") String courseId);
+           "WHERE uc.accountId = :accountId AND c.id = :courseId")
+    boolean existsByAccountIdAndCourseId(@Param("accountId") String accountId, @Param("courseId") String courseId);
+
+    @Query("SELECT uc FROM UserCourse uc WHERE uc.accountId = :accountId AND uc.course.id = :courseId")
+    java.util.Optional<UserCourse> findByAccountIdAndCourseId(@Param("accountId") String accountId, @Param("courseId") String courseId);
 }

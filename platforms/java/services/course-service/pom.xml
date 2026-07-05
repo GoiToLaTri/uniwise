@@ -120,7 +120,20 @@
 			<artifactId>platform-event-starter</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
+
+		<dependency>
+			<groupId>com.uniwise</groupId>
+			<artifactId>grpc-contracts</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.uniwise</groupId>
+			<artifactId>grpc-spring-boot-starter</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
+
 
 	<build>
 		<plugins>

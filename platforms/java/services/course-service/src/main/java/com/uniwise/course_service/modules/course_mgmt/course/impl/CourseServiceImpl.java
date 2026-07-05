@@ -100,14 +100,14 @@ public class CourseServiceImpl implements CourseService {
         
         CourseResponse response = courseMapper.toResponse(course);
         
-        String currentUserId = getCurrentAccountId();
+        String currentAccountId = getCurrentAccountId();
         
-        boolean isCreator = course.getCreatorId() != null && course.getCreatorId().equals(currentUserId);
+        boolean isCreator = course.getCreatorId() != null && course.getCreatorId().equals(currentAccountId);
         boolean isAdmin = hasAdminAuthority();
         boolean isEnrolled = false;
 
-        if (currentUserId != null && !currentUserId.isBlank()) {
-            isEnrolled = isCreator || isAdmin || learningProgressService.isEnrolled(currentUserId, course.getId());
+        if (currentAccountId != null && !currentAccountId.isBlank()) {
+            isEnrolled = isCreator || isAdmin || learningProgressService.isEnrolled(currentAccountId, course.getId());
         }
         
         response.setIsEnrolled(isEnrolled);
@@ -123,7 +123,8 @@ public class CourseServiceImpl implements CourseService {
         response.setTotalLessonsCount(totalLessons);
 
         if (isEnrolled) {
-            List<UserLesson> userLessons = learningProgressService.getUserLessonsProgress(currentUserId, course.getId());
+            List<UserLesson> userLessons = learningProgressService.getUserLessonsProgress(currentAccountId, course.getId());
+
             Map<String, UserLesson> progressMap = userLessons.stream()
                     .collect(Collectors.toMap(ul -> ul.getLesson().getId(), ul -> ul, (ul1, ul2) -> ul1));
             
@@ -297,6 +298,14 @@ public class CourseServiceImpl implements CourseService {
                 .filter(Course::getIsActive)
                 .orElseThrow(() -> new HttpException(CourseError.COURSE_NOT_FOUND));
     }
+
+    @Override
+    public Course getEntityById(String id) {
+        return courseRepository.findById(id)
+                .filter(Course::getIsActive)
+                .orElseThrow(() -> new HttpException(CourseError.COURSE_NOT_FOUND));
+    }
+
 
     private String getCurrentAccountId() {
         SecurityContext context = SecurityContextHolder.getContext();

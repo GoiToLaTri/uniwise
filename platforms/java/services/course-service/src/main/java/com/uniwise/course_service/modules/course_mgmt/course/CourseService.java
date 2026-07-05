@@ -20,4 +20,6 @@ public interface CourseService {
             String status, String keyword,
             String sortBy, String sortDir);
     Course getEntityByPublicId(String publicId);
+    Course getEntityById(String id);
 }
+

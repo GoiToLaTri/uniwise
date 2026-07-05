@@ -23,6 +23,8 @@ mvn -f (Join-Path $scriptPath "platforms/java/libs/common/pom.xml") clean instal
 mvn -f (Join-Path $scriptPath "platforms/java/libs/grpc-contracts/pom.xml") clean install -DskipTests
 mvn -f (Join-Path $scriptPath "platforms/java/libs/grpc-spring-boot-starter/pom.xml") clean install -DskipTests
 mvn -f (Join-Path $scriptPath "platforms/java/libs/jwt-security-starter/pom.xml") clean install -DskipTests
+mvn -f (Join-Path $scriptPath "platforms/java/libs/platform-event-contract/pom.xml") clean install -DskipTests
+mvn -f (Join-Path $scriptPath "platforms/java/libs/platform-event-starter/pom.xml") clean install -DskipTests
 
 # 3. Khoi chay cac service Spring Boot (Su dung Windows Terminal tab neu co)
 Write-Host ">>> Khoi chay cac service..." -ForegroundColor Green
@@ -33,8 +35,10 @@ $services = @(
     @{ Path = "platforms/java/services/user-service"; Title = "User Service (8081)" },
     @{ Path = "platforms/java/services/course-service"; Title = "Course Service (8082)" },
     @{ Path = "platforms/java/services/media-service"; Title = "Media Service (8083)" },
+    @{ Path = "platforms/java/services/payment-service"; Title = "Payment Service (8085)" },
     @{ Path = "platforms/java/workers/ffmpeg-worker"; Title = "FFmpeg Worker (9900)" }
 )
+
 
 $ps7guid = "574e775e-4f2a-5b96-ac1e-a2962a402336"
 $hasWt = Get-Command wt -ErrorAction SilentlyContinue

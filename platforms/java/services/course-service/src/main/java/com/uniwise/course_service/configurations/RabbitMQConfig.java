@@ -13,10 +13,16 @@ import com.uniwise.platform_event_contract.constant.RoutingKeys;
 public class RabbitMQConfig {
 
     public static final String VIDEO_TRANSCODED_QUEUE = "course.video-transcoded.queue";
+    public static final String PAYMENT_COMPLETED_QUEUE = "course.payment-completed.queue";
 
     @Bean
     public Queue videoTranscodedQueue() {
         return new Queue(VIDEO_TRANSCODED_QUEUE, true); // durable
+    }
+
+    @Bean
+    public Queue paymentCompletedQueue() {
+        return new Queue(PAYMENT_COMPLETED_QUEUE, true); // durable
     }
 
     @Bean
@@ -25,4 +31,12 @@ public class RabbitMQConfig {
                 .to(mediaExchange)
                 .with(RoutingKeys.VIDEO_TRANSCODED);
     }
+
+    @Bean
+    public Binding paymentCompletedBinding(Queue paymentCompletedQueue, TopicExchange platformExchange) {
+        return BindingBuilder.bind(paymentCompletedQueue)
+                .to(platformExchange)
+                .with(RoutingKeys.PAYMENT_COMPLETED);
+    }
 }
+

@@ -15,8 +15,8 @@ import com.uniwise.course_service.modules.course_mgmt.lesson.entity.Lesson;
 public class UserLesson {
  
     @Id
-    @Column(name = "user_id", nullable = false, length = 36)
-    private String userId; // Từ Auth Context — không FK sang service khác
+    @Column(name = "account_id", nullable = false, length = 36)
+    private String accountId; // Từ Auth Context — không FK sang service khác
  
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
@@ -43,7 +43,7 @@ public class UserLesson {
     // ── Composite Key ──────────────────────────────────────────────────────────
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @EqualsAndHashCode
     public static class UserLessonId implements Serializable {
-        private String userId;
+        private String accountId;
         private String lesson;
     }
 }
