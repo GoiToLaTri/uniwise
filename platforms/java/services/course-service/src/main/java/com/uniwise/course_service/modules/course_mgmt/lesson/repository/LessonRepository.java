@@ -20,6 +20,25 @@ public interface LessonRepository extends JpaRepository<Lesson, String> {
 
     boolean existsByPublicId(String publicId);
 
+    @Query("SELECT COALESCE(MAX(l.sortOrder), 0) FROM Lesson l WHERE l.section.id = :sectionId")
+    Integer findMaxSortOrderBySectionId(@Param("sectionId") String sectionId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Lesson l SET l.sortOrder = l.sortOrder + 1 WHERE l.section.id = :sectionId AND l.sortOrder >= :sortOrder")
+    void shiftSortOrderUp(@Param("sectionId") String sectionId, @Param("sortOrder") Integer sortOrder);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Lesson l SET l.sortOrder = l.sortOrder - 1 WHERE l.section.id = :sectionId AND l.sortOrder > :sortOrder")
+    void shiftSortOrderDown(@Param("sectionId") String sectionId, @Param("sortOrder") Integer sortOrder);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Lesson l SET l.sortOrder = l.sortOrder - 1 WHERE l.section.id = :sectionId AND l.sortOrder > :oldOrder AND l.sortOrder <= :newOrder")
+    void shiftSortOrderRangeDown(@Param("sectionId") String sectionId, @Param("oldOrder") Integer oldOrder, @Param("newOrder") Integer newOrder);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Lesson l SET l.sortOrder = l.sortOrder + 1 WHERE l.section.id = :sectionId AND l.sortOrder >= :newOrder AND l.sortOrder < :oldOrder")
+    void shiftSortOrderRangeUp(@Param("sectionId") String sectionId, @Param("newOrder") Integer newOrder, @Param("oldOrder") Integer oldOrder);
+
     @Query("SELECT l FROM Lesson l WHERE " +
            "(:sectionId IS NULL OR l.section.id = :sectionId) " +
            "AND (:keyword IS NULL OR LOWER(l.title) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +

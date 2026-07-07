@@ -98,8 +98,31 @@ public enum ValidationError implements ErrorDefinition {
         HASHTAG_NAME_TOO_LONG(
                         "HT_VAL_003",
                         "Hashtag name must not exceed 100 characters",
+                        HttpStatus.BAD_REQUEST),
+        ID_REQUIRED(
+                        "VAL_017",
+                        "ID is required",
+                        HttpStatus.BAD_REQUEST),
+        SORT_ORDER_REQUIRED(
+                        "VAL_018",
+                        "Sort order is required",
+                        HttpStatus.BAD_REQUEST),
+        SORT_ORDER_INVALID(
+                        "VAL_019",
+                        "Sort order must be zero or positive",
+                        HttpStatus.BAD_REQUEST),
+        ITEMS_REQUIRED(
+                        "VAL_020",
+                        "Items list cannot be empty",
+                        HttpStatus.BAD_REQUEST),
+        SECTION_TITLE_REQUIRED(
+                        "VAL_021",
+                        "Section title is required",
+                        HttpStatus.BAD_REQUEST),
+        COURSE_ID_REQUIRED(
+                        "VAL_022",
+                        "Course ID is required",
                         HttpStatus.BAD_REQUEST);
-        ;
 
         String code;
         String message;

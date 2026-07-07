@@ -15,5 +15,6 @@ public interface SectionService {
             String sortBy, String sortDir);
     SectionResponse update(String publicId, SectionUpdateRequest request);
     void delete(String publicId);
+    void reorder(String courseId, com.uniwise.common.dto.request.ReorderRequest request);
     Section getEntityByPublicId(String publicId);
 }

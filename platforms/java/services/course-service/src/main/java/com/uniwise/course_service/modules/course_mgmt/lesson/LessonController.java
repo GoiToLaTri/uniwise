@@ -83,4 +83,16 @@ public class LessonController {
                 .message("Lesson deleted successfully")
                 .build();
     }
+
+    // ===== PUT /api/v1/lessons/section/{sectionId}/reorder =====
+    @PutMapping("/section/{sectionId}/reorder")
+    public ApiResponse<Void> reorder(
+            @PathVariable("sectionId") String sectionId,
+            @Valid @RequestBody com.uniwise.common.dto.request.ReorderRequest request) {
+        lessonService.reorder(sectionId, request);
+        return ApiResponse.<Void>builder()
+                .code("OK")
+                .message("Lessons reordered successfully")
+                .build();
+    }
 }

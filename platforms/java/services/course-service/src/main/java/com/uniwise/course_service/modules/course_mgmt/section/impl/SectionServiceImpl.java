@@ -50,14 +50,18 @@ public class SectionServiceImpl implements SectionService {
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new HttpException(SectionError.COURSE_NOT_FOUND));
 
-        // Check for sort order duplication in the same course
-        if (sectionRepository.existsByCourseIdAndSortOrder(request.getCourseId(), request.getSortOrder())) {
-            log.warn("Sort order {} already exists in course {}", request.getSortOrder(), request.getCourseId());
-            throw new HttpException(SectionError.SECTION_SORT_ORDER_CONFLICT);
-        }
-
         // 2. Mapping
         Section section = sectionMapper.toEntity(request);
+        section.setId(UUID.randomUUID().toString());
+
+        // Handle sort order logic
+        if (request.getSortOrder() != null) {
+            sectionRepository.shiftSortOrderUp(request.getCourseId(), request.getSortOrder());
+            section.setSortOrder(request.getSortOrder());
+        } else {
+            Integer maxSortOrder = sectionRepository.findMaxSortOrderByCourseId(request.getCourseId());
+            section.setSortOrder(maxSortOrder + 1);
+        }
         section.setId(UUID.randomUUID().toString());
 
         // Generate unique 16-character publicId
@@ -126,12 +130,17 @@ public class SectionServiceImpl implements SectionService {
         log.info("Updating section with publicId: {}", publicId);
         Section section = getEntityByPublicId(publicId);
 
-        // Check if updating sort order and it conflicts with another section in the same course
-        if (request.getSortOrder() != null &&
-                sectionRepository.existsByCourseIdAndSortOrderAndPublicIdNot(
-                        section.getCourse().getId(), request.getSortOrder(), publicId)) {
-            log.warn("Sort order {} already exists in course {}", request.getSortOrder(), section.getCourse().getId());
-            throw new HttpException(SectionError.SECTION_SORT_ORDER_CONFLICT);
+        // Check if updating sort order
+        if (request.getSortOrder() != null && !request.getSortOrder().equals(section.getSortOrder())) {
+            Integer oldSortOrder = section.getSortOrder();
+            Integer newSortOrder = request.getSortOrder();
+            String courseId = section.getCourse().getId();
+
+            if (oldSortOrder < newSortOrder) {
+                sectionRepository.shiftSortOrderRangeDown(courseId, oldSortOrder, newSortOrder);
+            } else {
+                sectionRepository.shiftSortOrderRangeUp(courseId, newSortOrder, oldSortOrder);
+            }
         }
 
         sectionMapper.updateEntity(request, section);
@@ -148,8 +157,29 @@ public class SectionServiceImpl implements SectionService {
     public void delete(String publicId) {
         log.info("Deleting section with publicId: {}", publicId);
         Section section = getEntityByPublicId(publicId);
+        String courseId = section.getCourse().getId();
+        Integer deletedSortOrder = section.getSortOrder();
+
         sectionRepository.delete(section);
+        sectionRepository.shiftSortOrderDown(courseId, deletedSortOrder);
+        
         log.info("Section deleted successfully with publicId: {}", publicId);
+    }
+
+    // ===== REORDER =====
+    @Override
+    @PreAuthorize("hasAuthority('section:update')")
+    @Transactional(rollbackFor = Exception.class)
+    public void reorder(String courseId, com.uniwise.common.dto.request.ReorderRequest request) {
+        log.info("Bulk reordering sections in course: {}", courseId);
+        for (com.uniwise.common.dto.request.ReorderItemRequest item : request.getItems()) {
+            Section section = sectionRepository.findByPublicId(item.getId())
+                    .orElseThrow(() -> new HttpException(SectionError.SECTION_NOT_FOUND));
+            if (section.getCourse().getId().equals(courseId)) {
+                section.setSortOrder(item.getSortOrder());
+                sectionRepository.save(section);
+            }
+        }
     }
 
     // ===== INTERNAL =====

@@ -50,14 +50,18 @@ public class LessonServiceImpl implements LessonService {
         Section section = sectionRepository.findById(request.getSectionId())
                 .orElseThrow(() -> new HttpException(LessonError.SECTION_NOT_FOUND));
 
-        // Check for sort order duplication in the same section
-        if (lessonRepository.existsBySectionIdAndSortOrder(request.getSectionId(), request.getSortOrder())) {
-            log.warn("Sort order {} already exists in section {}", request.getSortOrder(), request.getSectionId());
-            throw new HttpException(LessonError.LESSON_SORT_ORDER_CONFLICT);
-        }
-
         // 2. Mapping
         Lesson lesson = lessonMapper.toEntity(request);
+        lesson.setId(UUID.randomUUID().toString());
+
+        // Handle sort order logic
+        if (request.getSortOrder() != null) {
+            lessonRepository.shiftSortOrderUp(request.getSectionId(), request.getSortOrder());
+            lesson.setSortOrder(request.getSortOrder());
+        } else {
+            Integer maxSortOrder = lessonRepository.findMaxSortOrderBySectionId(request.getSectionId());
+            lesson.setSortOrder(maxSortOrder + 1);
+        }
         lesson.setId(UUID.randomUUID().toString());
 
         // Generate unique 16-character publicId if not provided by client
@@ -162,12 +166,17 @@ public class LessonServiceImpl implements LessonService {
         log.info("Updating lesson with publicId: {}", publicId);
         Lesson lesson = getEntityByPublicId(publicId);
 
-        // Check if updating sort order and it conflicts with another lesson in the same section
-        if (request.getSortOrder() != null &&
-                lessonRepository.existsBySectionIdAndSortOrderAndPublicIdNot(
-                        lesson.getSection().getId(), request.getSortOrder(), publicId)) {
-            log.warn("Sort order {} already exists in section {}", request.getSortOrder(), lesson.getSection().getId());
-            throw new HttpException(LessonError.LESSON_SORT_ORDER_CONFLICT);
+        // Check if updating sort order
+        if (request.getSortOrder() != null && !request.getSortOrder().equals(lesson.getSortOrder())) {
+            Integer oldSortOrder = lesson.getSortOrder();
+            Integer newSortOrder = request.getSortOrder();
+            String sectionId = lesson.getSection().getId();
+
+            if (oldSortOrder < newSortOrder) {
+                lessonRepository.shiftSortOrderRangeDown(sectionId, oldSortOrder, newSortOrder);
+            } else {
+                lessonRepository.shiftSortOrderRangeUp(sectionId, newSortOrder, oldSortOrder);
+            }
         }
 
         lessonMapper.updateEntity(request, lesson);
@@ -186,10 +195,31 @@ public class LessonServiceImpl implements LessonService {
     public void delete(String publicId) {
         log.info("Deleting lesson with publicId: {}", publicId);
         Lesson lesson = getEntityByPublicId(publicId);
+        String sectionId = lesson.getSection().getId();
+        Integer deletedSortOrder = lesson.getSortOrder();
+
         lessonRepository.delete(lesson);
+        lessonRepository.shiftSortOrderDown(sectionId, deletedSortOrder);
+        
         log.info("Lesson deleted successfully with publicId: {}", publicId);
 
         // TODO: Bắn message qua message broker để dọn dẹp các tài nguyên video liên quan trên MinIO (nếu cần).
+    }
+
+    // ===== REORDER =====
+    @Override
+    @PreAuthorize("hasAuthority('lesson:update')")
+    @Transactional(rollbackFor = Exception.class)
+    public void reorder(String sectionId, com.uniwise.common.dto.request.ReorderRequest request) {
+        log.info("Bulk reordering lessons in section: {}", sectionId);
+        for (com.uniwise.common.dto.request.ReorderItemRequest item : request.getItems()) {
+            Lesson lesson = lessonRepository.findByPublicId(item.getId())
+                    .orElseThrow(() -> new HttpException(LessonError.LESSON_NOT_FOUND));
+            if (lesson.getSection().getId().equals(sectionId)) {
+                lesson.setSortOrder(item.getSortOrder());
+                lessonRepository.save(lesson);
+            }
+        }
     }
 
     // ===== INTERNAL =====

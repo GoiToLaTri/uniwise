@@ -18,6 +18,25 @@ public interface SectionRepository extends JpaRepository<Section, String> {
 
     boolean existsByCourseIdAndSortOrderAndPublicIdNot(String courseId, Integer sortOrder, String publicId);
 
+    @Query("SELECT COALESCE(MAX(s.sortOrder), 0) FROM Section s WHERE s.course.id = :courseId")
+    Integer findMaxSortOrderByCourseId(@Param("courseId") String courseId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Section s SET s.sortOrder = s.sortOrder + 1 WHERE s.course.id = :courseId AND s.sortOrder >= :sortOrder")
+    void shiftSortOrderUp(@Param("courseId") String courseId, @Param("sortOrder") Integer sortOrder);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Section s SET s.sortOrder = s.sortOrder - 1 WHERE s.course.id = :courseId AND s.sortOrder > :sortOrder")
+    void shiftSortOrderDown(@Param("courseId") String courseId, @Param("sortOrder") Integer sortOrder);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Section s SET s.sortOrder = s.sortOrder - 1 WHERE s.course.id = :courseId AND s.sortOrder > :oldOrder AND s.sortOrder <= :newOrder")
+    void shiftSortOrderRangeDown(@Param("courseId") String courseId, @Param("oldOrder") Integer oldOrder, @Param("newOrder") Integer newOrder);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Section s SET s.sortOrder = s.sortOrder + 1 WHERE s.course.id = :courseId AND s.sortOrder >= :newOrder AND s.sortOrder < :oldOrder")
+    void shiftSortOrderRangeUp(@Param("courseId") String courseId, @Param("newOrder") Integer newOrder, @Param("oldOrder") Integer oldOrder);
+
     @Query("SELECT s FROM Section s WHERE " +
            "(:courseId IS NULL OR s.course.id = :courseId) " +
            "AND (:keyword IS NULL OR LOWER(s.title) LIKE LOWER(CONCAT('%', :keyword, '%')))")

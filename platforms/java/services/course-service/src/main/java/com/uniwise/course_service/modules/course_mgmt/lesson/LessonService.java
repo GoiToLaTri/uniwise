@@ -16,5 +16,6 @@ public interface LessonService {
             String sortBy, String sortDir);
     LessonResponse update(String publicId, LessonUpdateRequest request);
     void delete(String publicId);
+    void reorder(String sectionId, com.uniwise.common.dto.request.ReorderRequest request);
     Lesson getEntityByPublicId(String publicId);
 }
