@@ -19,7 +19,7 @@ public class Lesson {
     }
  
     public enum LessonStatus {
-        PROCESSING, READY
+        PROCESSING, READY, FAILED
     }
  
     // ── Fields ─────────────────────────────────────────────────────────────────

@@ -25,18 +25,19 @@ public class VideoTranscodedConsumer {
         String lessonId = event.getLessonId();
         String videoUrl = event.getVideoUrl();
 
-        log.info("Received VideoTranscodedEvent: lessonId={}, videoUrl={}", lessonId, videoUrl);
+        log.info("Received VideoTranscodedEvent: lessonId={}, status={}, videoUrl={}", lessonId, event.getStatus(), videoUrl);
 
         try {
             lessonRepository.findByPublicId(lessonId).ifPresentOrElse(lesson -> {
-                if (lesson.getStatus() == Lesson.LessonStatus.PROCESSING) {
+                if ("FAILED".equalsIgnoreCase(event.getStatus())) {
+                    lesson.setStatus(Lesson.LessonStatus.FAILED);
+                    log.warn("Video transcoding failed for lesson publicId={}. Updated status to FAILED.", lessonId);
+                } else {
                     lesson.setStatus(Lesson.LessonStatus.READY);
                     lesson.setContentReference(videoUrl);
-                    lessonRepository.saveAndFlush(lesson);
                     log.info("Successfully updated status to READY and contentReference to {} for lesson publicId={}", videoUrl, lessonId);
-                } else {
-                    log.info("Lesson publicId={} is already in {} status. Skipping duplicate event processing.", lessonId, lesson.getStatus());
                 }
+                lessonRepository.saveAndFlush(lesson);
             }, () -> {
                 log.warn("Lesson not found with publicId={} for transcoding completion", lessonId);
             });

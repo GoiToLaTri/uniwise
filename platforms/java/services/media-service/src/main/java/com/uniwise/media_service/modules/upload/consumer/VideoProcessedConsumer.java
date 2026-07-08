@@ -39,7 +39,8 @@ public class VideoProcessedConsumer {
         }
 
         if (!"SUCCESS".equalsIgnoreCase(status)) {
-            log.warn("Video processing failed for lessonId={}. Relocation aborted.", lessonId);
+            log.warn("Video processing failed for lessonId={}. Relocation aborted. Publishing FAILED event.", lessonId);
+            publishTranscodedEvent(lessonId, null, null, "FAILED");
             return;
         }
 
@@ -77,7 +78,7 @@ public class VideoProcessedConsumer {
         java.util.Iterator<Result<Item>> iterator = results.iterator();
         boolean hasSourceFiles = iterator.hasNext();
         if (hasSourceFiles) {
-            clearCompletionMarker(bucketName, lessonPrefix);
+            clearDestinationFolder(bucketName, lessonPrefix);
         }
 
         boolean movedAny = moveFiles(iterator, bucketName, processedPrefix, lessonPrefix);
@@ -95,25 +96,25 @@ public class VideoProcessedConsumer {
         }
 
         log.info("Relocation completed for lessonId={}. Publishing VideoTranscodedEvent.", lessonId);
-        publishTranscodedEvent(lessonId, bucketName, lessonPrefix);
+        publishTranscodedEvent(lessonId, bucketName, lessonPrefix, "SUCCESS");
     }
 
-    private void clearCompletionMarker(String bucketName, String lessonPrefix) throws Exception {
-        String markerKey = lessonPrefix + ".completed";
-        log.info("New source HLS files detected. Clearing old .completed marker at destination.");
-        try {
+    private void clearDestinationFolder(String bucketName, String lessonPrefix) throws Exception {
+        log.info("New source HLS files detected. Clearing old files at destination: {}", lessonPrefix);
+        Iterable<Result<Item>> oldItems = minioClient.listObjects(
+                ListObjectsArgs.builder()
+                        .bucket(bucketName)
+                        .prefix(lessonPrefix)
+                        .recursive(true)
+                        .build());
+        
+        for (Result<Item> result : oldItems) {
+            Item item = result.get();
             minioClient.removeObject(
                     RemoveObjectArgs.builder()
                             .bucket(bucketName)
-                            .object(markerKey)
+                            .object(item.objectName())
                             .build());
-        } catch (io.minio.errors.ErrorResponseException e) {
-            String errorCode = e.errorResponse().code();
-            if ("NoSuchKey".equals(errorCode)) {
-                log.info("Marker file .completed not found at destination (NoSuchKey). Safe to proceed.");
-            } else {
-                throw e; // Rethrow other MinIO error codes (e.g., AccessDenied, NoSuchBucket)
-            }
         }
     }
 
@@ -176,17 +177,20 @@ public class VideoProcessedConsumer {
         }
     }
 
-    private void publishTranscodedEvent(String lessonId, String bucketName, String lessonPrefix) {
-        // Construct the HLS playlist public URL
-        String publicUrl = minioProperties.getPublicUrl();
-        String videoUrl = String.format("%s/%s/%splaylist.m3u8", publicUrl, bucketName, lessonPrefix);
+    private void publishTranscodedEvent(String lessonId, String bucketName, String lessonPrefix, String status) {
+        String videoUrl = null;
+        if ("SUCCESS".equalsIgnoreCase(status)) {
+            String publicUrl = minioProperties.getPublicUrl();
+            videoUrl = String.format("%s/%s/%splaylist.m3u8", publicUrl, bucketName, lessonPrefix);
+        }
 
         VideoTranscodedEvent transcodedEvent = VideoTranscodedEvent.builder()
                 .lessonId(lessonId)
                 .videoUrl(videoUrl)
+                .status(status)
                 .build();
 
         eventPublisher.publish(Exchanges.MEDIA, RoutingKeys.VIDEO_TRANSCODED, transcodedEvent);
-        log.info("Published VideoTranscodedEvent for lessonId: {} with URL: {}", lessonId, videoUrl);
+        log.info("Published VideoTranscodedEvent for lessonId: {} with status: {} and URL: {}", lessonId, status, videoUrl);
     }
 }
