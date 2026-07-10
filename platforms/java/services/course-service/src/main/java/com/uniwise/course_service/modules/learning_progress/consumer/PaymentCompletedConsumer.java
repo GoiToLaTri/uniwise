@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.uniwise.course_service.configurations.RabbitMQConfig;
-import com.uniwise.course_service.modules.learning_progress.service.LearningProgressService;
+import com.uniwise.course_service.modules.learning_progress.LearningProgressService;
 import com.uniwise.platform_event_contract.envelope.EventEnvelope;
 import com.uniwise.platform_event_contract.event.payment.PaymentCompletedEvent;
 

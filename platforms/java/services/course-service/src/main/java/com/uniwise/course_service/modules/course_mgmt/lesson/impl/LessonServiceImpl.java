@@ -228,4 +228,15 @@ public class LessonServiceImpl implements LessonService {
         return lessonRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new HttpException(LessonError.LESSON_NOT_FOUND));
     }
+
+    @Override
+    public Lesson getEntityById(String id) {
+        return lessonRepository.findById(id)
+                .orElseThrow(() -> new HttpException(LessonError.LESSON_NOT_FOUND));
+    }
+
+    @Override
+    public long countByCourseId(String courseId) {
+        return lessonRepository.countByCourseId(courseId);
+    }
 }

@@ -18,4 +18,6 @@ public interface LessonService {
     void delete(String publicId);
     void reorder(String sectionId, com.uniwise.common.dto.request.ReorderRequest request);
     Lesson getEntityByPublicId(String publicId);
+    Lesson getEntityById(String id);
+    long countByCourseId(String courseId);
 }

@@ -122,6 +122,14 @@ public enum ValidationError implements ErrorDefinition {
         COURSE_ID_REQUIRED(
                         "VAL_022",
                         "Course ID is required",
+                        HttpStatus.BAD_REQUEST),
+        LAST_WATCHED_POSITION_REQUIRED(
+                        "VAL_023",
+                        "Last watched position is required",
+                        HttpStatus.BAD_REQUEST),
+        LAST_WATCHED_POSITION_INVALID(
+                        "VAL_024",
+                        "Last watched position must be zero or positive",
                         HttpStatus.BAD_REQUEST);
 
         String code;

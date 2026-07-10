@@ -10,7 +10,9 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 public enum CourseError implements ErrorDefinition {
     COURSE_NOT_FOUND("E_COURSE_001", "Course not found", HttpStatus.NOT_FOUND),
-    PRICE_TIER_NOT_FOUND("E_COURSE_002", "Price tier not found", HttpStatus.NOT_FOUND);
+    PRICE_TIER_NOT_FOUND("E_COURSE_002", "Price tier not found", HttpStatus.NOT_FOUND),
+    COURSE_NOT_FREE("E_COURSE_003", "This course is not free and requires payment", HttpStatus.BAD_REQUEST),
+    USER_NOT_ENROLLED("E_COURSE_004", "User is not enrolled in this course", HttpStatus.FORBIDDEN);
 
     String code;
     String message;

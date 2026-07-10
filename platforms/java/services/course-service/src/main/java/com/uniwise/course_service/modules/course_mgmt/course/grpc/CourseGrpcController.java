@@ -9,9 +9,9 @@ import com.uniwise.course.v1.CheckLessonAccessRequest;
 import com.uniwise.course.v1.CheckLessonAccessResponse;
 import com.uniwise.course_service.modules.course_mgmt.course.entity.Course;
 import com.uniwise.course_service.modules.course_mgmt.lesson.entity.Lesson;
+import com.uniwise.course_service.modules.learning_progress.LearningProgressService;
 import com.uniwise.course_service.modules.course_mgmt.course.CourseService;
 import com.uniwise.course_service.modules.course_mgmt.lesson.LessonService;
-import com.uniwise.course_service.modules.learning_progress.service.LearningProgressService;
 import com.uniwise.grpc_spring_boot_starter.annotation.GrpcService;
 import com.uniwise.common.exception.HttpException;
 

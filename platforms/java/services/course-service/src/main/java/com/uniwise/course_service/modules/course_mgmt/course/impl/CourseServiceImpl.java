@@ -31,8 +31,8 @@ import com.uniwise.course_service.modules.pricing.entity.PriceTier;
 import com.uniwise.course_service.modules.pricing.repository.PriceTierRepository;
 import com.uniwise.course_service.modules.course_mgmt.lesson.repository.LessonRepository;
 import com.uniwise.course_service.modules.course_mgmt.lesson.entity.Lesson;
+import com.uniwise.course_service.modules.learning_progress.LearningProgressService;
 import com.uniwise.course_service.modules.learning_progress.entity.UserLesson;
-import com.uniwise.course_service.modules.learning_progress.service.LearningProgressService;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

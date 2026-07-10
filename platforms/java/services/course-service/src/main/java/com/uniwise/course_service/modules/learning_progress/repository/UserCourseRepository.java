@@ -3,6 +3,8 @@ package com.uniwise.course_service.modules.learning_progress.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.uniwise.course_service.modules.learning_progress.entity.UserCourse;
 
 public interface UserCourseRepository extends JpaRepository<UserCourse, UserCourse.UserCourseId> {
@@ -13,4 +15,6 @@ public interface UserCourseRepository extends JpaRepository<UserCourse, UserCour
 
     @Query("SELECT uc FROM UserCourse uc WHERE uc.accountId = :accountId AND uc.course.id = :courseId")
     java.util.Optional<UserCourse> findByAccountIdAndCourseId(@Param("accountId") String accountId, @Param("courseId") String courseId);
+
+    Page<UserCourse> findByAccountId(String accountId, Pageable pageable);
 }

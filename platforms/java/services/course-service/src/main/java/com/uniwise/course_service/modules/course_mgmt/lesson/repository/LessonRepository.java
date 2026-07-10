@@ -51,4 +51,7 @@ public interface LessonRepository extends JpaRepository<Lesson, String> {
             @Param("status") Lesson.LessonStatus status,
             Pageable pageable
     );
+
+    @Query("SELECT COUNT(l) FROM Lesson l WHERE l.section.course.id = :courseId")
+    long countByCourseId(@Param("courseId") String courseId);
 }
