@@ -32,12 +32,12 @@ public class CourseSearchServiceImpl implements CourseSearchService {
     @Override
     @PreAuthorize("hasAuthority('search:all-courses')")
     public PageResponse<CourseDocument> searchCourses(String keyword, int page, int size) {
-        return searchWithStatus(keyword, null, page, size);
+        return searchCourses(keyword, null, null, page, size);
     }
 
     @Override
     public PageResponse<CourseDocument> searchPublishedCourses(String keyword, int page, int size) {
-        return searchWithStatus(keyword, "PUBLISHED", page, size);
+        return searchCourses(keyword, "PUBLISHED", null, page, size);
     }
 
     /**
@@ -50,7 +50,12 @@ public class CourseSearchServiceImpl implements CourseSearchService {
      * @param size    Số lượng phần tử trên mỗi trang
      * @return        PageResponse chứa danh sách khóa học và thông tin phân trang
      */
-    private PageResponse<CourseDocument> searchWithStatus(String keyword, String status, int page, int size) {
+    @Override
+    public PageResponse<CourseDocument> searchCreatorCourses(String keyword, String creatorId, int page, int size) {
+        return searchCourses(keyword, null, creatorId, page, size);
+    }
+
+    private PageResponse<CourseDocument> searchCourses(String keyword, String status, String creatorId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         
         // Bắt đầu xây dựng một Elasticsearch Boolean Query
@@ -88,6 +93,14 @@ public class CourseSearchServiceImpl implements CourseSearchService {
                 b.filter(f -> f.term(t -> t
                     .field("status.keyword")
                     .value(status)
+                ));
+            }
+            
+            // 3. Nếu có yêu cầu lọc theo người tạo (creatorId)
+            if (creatorId != null && !creatorId.trim().isEmpty()) {
+                b.filter(f -> f.term(t -> t
+                    .field("creatorId.keyword")
+                    .value(creatorId)
                 ));
             }
             return b;

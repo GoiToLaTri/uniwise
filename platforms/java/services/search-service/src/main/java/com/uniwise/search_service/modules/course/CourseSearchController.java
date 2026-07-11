@@ -1,5 +1,7 @@
 package com.uniwise.search_service.modules.course;
 
+import java.security.Principal;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -42,6 +44,23 @@ public class CourseSearchController {
                 .code("OK")
                 .message("Search published courses successfully")
                 .data(courseSearchService.searchPublishedCourses(keyword, page, size))
+                .build();
+    }
+
+    @GetMapping("/creator")
+    public ApiResponse<PageResponse<CourseDocument>> searchCreatorCourses(
+            Principal principal,
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+            
+        // Get the current creator's ID from the Principal object provided by Spring Security
+        String currentUserId = principal.getName();
+            
+        return ApiResponse.<PageResponse<CourseDocument>>builder()
+                .code("OK")
+                .message("Search creator courses successfully")
+                .data(courseSearchService.searchCreatorCourses(keyword, currentUserId, page, size))
                 .build();
     }
 }
