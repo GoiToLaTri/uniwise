@@ -33,6 +33,14 @@ import com.uniwise.course_service.modules.course_mgmt.lesson.repository.LessonRe
 import com.uniwise.course_service.modules.course_mgmt.lesson.entity.Lesson;
 import com.uniwise.course_service.modules.learning_progress.LearningProgressService;
 import com.uniwise.course_service.modules.learning_progress.entity.UserLesson;
+import com.uniwise.platform_event_contract.constant.RoutingKeys;
+import com.uniwise.platform_event_contract.event.course.CourseCreatedEvent;
+import com.uniwise.platform_event_contract.event.course.CourseDeletedEvent;
+import com.uniwise.platform_event_contract.event.course.CourseUpdatedEvent;
+import com.uniwise.platform_event_starter.publisher.EventPublisher;
+
+import java.time.Instant;
+
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -46,10 +54,12 @@ import lombok.extern.slf4j.Slf4j;
 public class CourseServiceImpl implements CourseService {
 
     CourseRepository courseRepository;
+    // TODO: cần sửa vì quy phạm quy tắc layer
     PriceTierRepository priceTierRepository;
     CourseMapper courseMapper;
     LearningProgressService learningProgressService;
     LessonRepository lessonRepository;
+    EventPublisher eventPublisher;
 
     // ===== CREATE =====
     @Override
@@ -87,6 +97,16 @@ public class CourseServiceImpl implements CourseService {
         // 3. Persist
         Course saved = courseRepository.save(course);
         log.info("Course created successfully with id: {}, publicId: {}", saved.getId(), saved.getPublicId());
+
+        // 4. Publish Event
+        eventPublisher.publish(RoutingKeys.COURSE_CREATED, CourseCreatedEvent.builder()
+                .id(saved.getId())
+                .publicId(saved.getPublicId())
+                .title(saved.getTitle())
+                .description(saved.getDescription())
+                .creatorId(saved.getCreatorId())
+                .status(saved.getStatus().name())
+                .build());
 
         return courseMapper.toResponse(saved);
     }
@@ -265,6 +285,16 @@ public class CourseServiceImpl implements CourseService {
         Course saved = courseRepository.save(course);
         log.info("Course updated successfully with id: {}, publicId: {}", saved.getId(), saved.getPublicId());
 
+        // Publish Event
+        eventPublisher.publish(RoutingKeys.COURSE_UPDATED, CourseUpdatedEvent.builder()
+                .id(saved.getId())
+                .publicId(saved.getPublicId())
+                .title(saved.getTitle())
+                .description(saved.getDescription())
+                .status(saved.getStatus().name())
+                .updatedAt(Instant.now())
+                .build());
+
         return courseMapper.toResponse(saved);
     }
 
@@ -278,6 +308,11 @@ public class CourseServiceImpl implements CourseService {
         course.setIsActive(false);
         courseRepository.save(course);
         log.info("Course soft deleted successfully with publicId: {}", publicId);
+
+        // Publish Event
+        eventPublisher.publish(RoutingKeys.COURSE_DELETED, CourseDeletedEvent.builder()
+                .id(course.getId())
+                .build());
     }
 
     @Override

@@ -196,6 +196,24 @@ services:
         condition: service_healthy
       ffmpeg:
         condition: service_started
+
+  search-service:
+    build:
+      context: .
+      dockerfile: platforms/java/services/search-service/Dockerfile
+    container_name: search-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8086
+    networks:
+      - uniwise
+    restart: unless-stopped
+    depends_on:
+      elasticsearch:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     ports:
@@ -248,11 +266,14 @@ services:
     restart: unless-stopped
 
   elasticsearch:
-    image: elasticsearch:8.11.3
+    image: elasticsearch:9.0.3
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - ELASTIC_PASSWORD=000000
       - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
     ports:
       - "9200:9200"
@@ -264,15 +285,38 @@ services:
     restart: unless-stopped
 
   kibana:
-    image: kibana:8.11.3
+    image: kibana:9.0.3
     container_name: kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=000000
     ports:
       - "5601:5601"
     networks:
       - uniwise
     restart: unless-stopped
+    depends_on:
+      elasticsearch:
+        condition: service_started
+      elasticsearch-setup:
+        condition: service_completed_successfully
+
+  elasticsearch-setup:
+    image: elasticsearch:9.0.3
+    container_name: elasticsearch-setup
+    entrypoint: ["bash", "-c"]
+    command: >
+      "
+        echo 'Waiting for Elasticsearch...';
+        while ! curl -s http://elasticsearch:9200 >/dev/null; do
+          sleep 5;
+        done;
+        echo 'Setting kibana_system password...';
+        curl -s -X POST -u 'elastic:000000' -H 'Content-Type: application/json' http://elasticsearch:9200/_security/user/kibana_system/_password -d '{\"password\":\"000000\"}';
+      "
+    networks:
+      - uniwise
     depends_on:
       - elasticsearch
 
