@@ -42,6 +42,8 @@ public class CourseEventListener {
                 .description(event.getDescription())
                 .creatorId(event.getCreatorId())
                 .status(event.getStatus())
+                .thumbnailUrl(event.getThumbnailUrl())
+                .priceTierId(event.getPriceTierId())
                 .build();
                 
         courseDocumentRepository.save(doc);
@@ -60,6 +62,8 @@ public class CourseEventListener {
             doc.setTitle(event.getTitle());
             doc.setDescription(event.getDescription());
             doc.setStatus(event.getStatus());
+            doc.setThumbnailUrl(event.getThumbnailUrl());
+            doc.setPriceTierId(event.getPriceTierId());
             courseDocumentRepository.save(doc);
         });
     }

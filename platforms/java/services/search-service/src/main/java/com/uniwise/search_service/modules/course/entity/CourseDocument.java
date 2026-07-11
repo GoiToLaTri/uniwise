@@ -34,4 +34,10 @@ public class CourseDocument {
 
     @Field(type = FieldType.Keyword)
     private String status;
+
+    @Field(type = FieldType.Keyword)
+    private String thumbnailUrl;
+
+    @Field(type = FieldType.Keyword)
+    private String priceTierId;
 }

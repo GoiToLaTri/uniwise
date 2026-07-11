@@ -16,5 +16,7 @@ public class CourseUpdatedEvent {
     private String title;
     private String description;
     private String status;
+    private String thumbnailUrl;
+    private String priceTierId;
     private Instant updatedAt;
 }

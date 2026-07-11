@@ -16,4 +16,6 @@ public class CourseCreatedEvent {
     private String description;
     private String creatorId;
     private String status;
+    private String thumbnailUrl;
+    private String priceTierId;
 }

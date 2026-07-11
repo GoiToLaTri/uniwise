@@ -106,6 +106,8 @@ public class CourseServiceImpl implements CourseService {
                 .description(saved.getDescription())
                 .creatorId(saved.getCreatorId())
                 .status(saved.getStatus().name())
+                .thumbnailUrl(saved.getThumbnailUrl())
+                .priceTierId(saved.getPriceTier() != null ? saved.getPriceTier().getId() : null)
                 .build());
 
         return courseMapper.toResponse(saved);
@@ -292,6 +294,8 @@ public class CourseServiceImpl implements CourseService {
                 .title(saved.getTitle())
                 .description(saved.getDescription())
                 .status(saved.getStatus().name())
+                .thumbnailUrl(saved.getThumbnailUrl())
+                .priceTierId(saved.getPriceTier() != null ? saved.getPriceTier().getId() : null)
                 .updatedAt(Instant.now())
                 .build());
 
