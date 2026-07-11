@@ -13,7 +13,7 @@ if (-not $scriptPath) {
 # 1. Khoi dong ha tang Docker
 Write-Host ">>> Khoi dong Docker Infrastructure..." -ForegroundColor Green
 # Chi chay cac service ben ngoai (infrastructure services)
-docker compose -p uniwise up -d mysql redis redisinsight nginx rabbitmq minio ffmpeg
+docker compose -p uniwise up -d mysql redis redisinsight nginx rabbitmq minio ffmpeg elasticsearch kibana
 # Chay toan bo cac service (all services)
 # docker compose -p uniwise up -d
 
@@ -36,6 +36,7 @@ $services = @(
     @{ Path = "platforms/java/services/course-service"; Title = "Course Service (8082)" },
     @{ Path = "platforms/java/services/media-service"; Title = "Media Service (8083)" },
     @{ Path = "platforms/java/services/payment-service"; Title = "Payment Service (8085)" },
+    @{ Path = "platforms/java/services/search-service"; Title = "Search Service (8086)" },
     @{ Path = "platforms/java/workers/ffmpeg-worker"; Title = "FFmpeg Worker (9900)" }
 )
 
