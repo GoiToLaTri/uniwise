@@ -5,4 +5,5 @@ public final class Exchanges {
 
     public static final String EVENTS = "platform.events";
     public static final String MEDIA = "media.events";
+    public static final String DLX = "platform.dlx.exchange";
 }

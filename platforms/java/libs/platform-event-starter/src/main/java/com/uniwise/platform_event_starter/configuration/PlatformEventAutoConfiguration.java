@@ -60,4 +60,10 @@ public class PlatformEventAutoConfiguration {
     public TopicExchange mediaExchange() {
         return new TopicExchange(Exchanges.MEDIA);
     }
+
+    @Bean
+    @ConditionalOnMissingBean(name = "dlxExchange")
+    public TopicExchange dlxExchange() {
+        return new TopicExchange(Exchanges.DLX);
+    }
 }

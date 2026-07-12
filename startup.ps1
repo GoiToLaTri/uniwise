@@ -19,12 +19,12 @@ docker compose -p uniwise up -d mysql redis redisinsight nginx rabbitmq minio ff
 
 # 2. Build cac thu vien dung chung (local libs)
 Write-Host ">>> Build local libraries..." -ForegroundColor Green
-mvn -f (Join-Path $scriptPath "platforms/java/libs/common/pom.xml") clean install -DskipTests
-mvn -f (Join-Path $scriptPath "platforms/java/libs/grpc-contracts/pom.xml") clean install -DskipTests
-mvn -f (Join-Path $scriptPath "platforms/java/libs/grpc-spring-boot-starter/pom.xml") clean install -DskipTests
-mvn -f (Join-Path $scriptPath "platforms/java/libs/jwt-security-starter/pom.xml") clean install -DskipTests
-mvn -f (Join-Path $scriptPath "platforms/java/libs/platform-event-contract/pom.xml") clean install -DskipTests
-mvn -f (Join-Path $scriptPath "platforms/java/libs/platform-event-starter/pom.xml") clean install -DskipTests
+mvn -f (Join-Path $scriptPath "platforms/java/libs/common/pom.xml") install -DskipTests
+mvn -f (Join-Path $scriptPath "platforms/java/libs/grpc-contracts/pom.xml") install -DskipTests
+mvn -f (Join-Path $scriptPath "platforms/java/libs/grpc-spring-boot-starter/pom.xml") install -DskipTests
+mvn -f (Join-Path $scriptPath "platforms/java/libs/jwt-security-starter/pom.xml") install -DskipTests
+mvn -f (Join-Path $scriptPath "platforms/java/libs/platform-event-contract/pom.xml") install -DskipTests
+mvn -f (Join-Path $scriptPath "platforms/java/libs/platform-event-starter/pom.xml") install -DskipTests
 
 # 3. Khoi chay cac service Spring Boot (Su dung Windows Terminal tab neu co)
 Write-Host ">>> Khoi chay cac service..." -ForegroundColor Green
@@ -50,10 +50,10 @@ if ($hasWt) {
         $svcFullPath = Join-Path $scriptPath $svc.Path
         $title = "[Uniwise] " + $svc.Title
         if ($first) {
-            wt -w 0 -d "$svcFullPath" -p "$ps7guid" --title "$title" pwsh -NoExit -Command "mvn spring-boot:run"
+            wt -w 0 -d "$svcFullPath" -p "$ps7guid" --title "$title" pwsh -NoExit -Command "mvn clean spring-boot:run"
             $first = $false
         } else {
-            wt -w 0 new-tab -d "$svcFullPath" -p "$ps7guid" --title "$title" pwsh -NoExit -Command "mvn spring-boot:run"
+            wt -w 0 new-tab -d "$svcFullPath" -p "$ps7guid" --title "$title" pwsh -NoExit -Command "mvn clean spring-boot:run"
         }
         Start-Sleep -Seconds 1
     }
@@ -62,7 +62,7 @@ if ($hasWt) {
     foreach ($svc in $services) {
         $svcFullPath = Join-Path $scriptPath $svc.Path
         $title = "[Uniwise] " + $svc.Title
-        Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$Host.UI.RawUI.WindowTitle='$title'; cd `"$svcFullPath`"; mvn spring-boot:run"
+        Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$Host.UI.RawUI.WindowTitle='$title'; cd `"$svcFullPath`"; mvn clean spring-boot:run"
         Start-Sleep -Seconds 2
     }
     Write-Host "[+] Da kich hoat toan bo cac cua so dich vu powershell!" -ForegroundColor Green

@@ -1,8 +1,11 @@
 package com.uniwise.course_service.modules.course_mgmt.section.repository;
 
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -10,7 +13,7 @@ import com.uniwise.course_service.modules.course_mgmt.section.entity.Section;
 
 public interface SectionRepository extends JpaRepository<Section, String> {
 
-    java.util.Optional<Section> findByPublicId(String publicId);
+    Optional<Section> findByPublicId(String publicId);
 
     boolean existsByPublicId(String publicId);
 
@@ -21,19 +24,21 @@ public interface SectionRepository extends JpaRepository<Section, String> {
     @Query("SELECT COALESCE(MAX(s.sortOrder), 0) FROM Section s WHERE s.course.id = :courseId")
     Integer findMaxSortOrderByCourseId(@Param("courseId") String courseId);
 
-    @org.springframework.data.jpa.repository.Modifying
+    long countByCourseId(String courseId);
+
+    @Modifying
     @Query("UPDATE Section s SET s.sortOrder = s.sortOrder + 1 WHERE s.course.id = :courseId AND s.sortOrder >= :sortOrder")
     void shiftSortOrderUp(@Param("courseId") String courseId, @Param("sortOrder") Integer sortOrder);
 
-    @org.springframework.data.jpa.repository.Modifying
+    @Modifying
     @Query("UPDATE Section s SET s.sortOrder = s.sortOrder - 1 WHERE s.course.id = :courseId AND s.sortOrder > :sortOrder")
     void shiftSortOrderDown(@Param("courseId") String courseId, @Param("sortOrder") Integer sortOrder);
 
-    @org.springframework.data.jpa.repository.Modifying
+    @Modifying
     @Query("UPDATE Section s SET s.sortOrder = s.sortOrder - 1 WHERE s.course.id = :courseId AND s.sortOrder > :oldOrder AND s.sortOrder <= :newOrder")
     void shiftSortOrderRangeDown(@Param("courseId") String courseId, @Param("oldOrder") Integer oldOrder, @Param("newOrder") Integer newOrder);
 
-    @org.springframework.data.jpa.repository.Modifying
+    @Modifying
     @Query("UPDATE Section s SET s.sortOrder = s.sortOrder + 1 WHERE s.course.id = :courseId AND s.sortOrder >= :newOrder AND s.sortOrder < :oldOrder")
     void shiftSortOrderRangeUp(@Param("courseId") String courseId, @Param("newOrder") Integer newOrder, @Param("oldOrder") Integer oldOrder);
 

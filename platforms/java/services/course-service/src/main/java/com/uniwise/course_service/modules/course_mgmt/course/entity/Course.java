@@ -72,6 +72,26 @@ public class Course {
     @Column(name="updated_at")
     private Instant updatedAt;
  
+    @Builder.Default
+    @Column(name = "student_count", nullable = false)
+    private Integer studentCount = 0;
+
+    @Builder.Default
+    @Column(name = "average_rating", nullable = false)
+    private Double averageRating = 0.0;
+
+    @Builder.Default
+    @Column(name = "total_reviews", nullable = false)
+    private Integer totalReviews = 0;
+
+    @Builder.Default
+    @Column(name = "total_sections", nullable = false)
+    private Integer totalSections = 0;
+
+    @Builder.Default
+    @Column(name = "total_lessons", nullable = false)
+    private Integer totalLessons = 0;
+
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Section> sections;
  

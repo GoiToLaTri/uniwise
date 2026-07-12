@@ -3,24 +3,29 @@ package com.uniwise.search_service.modules.course.impl;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
-import org.springframework.data.elasticsearch.core.SearchHit;
-import org.springframework.data.elasticsearch.core.SearchHits;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.data.elasticsearch.client.elc.NativeQuery;
-import org.springframework.stereotype.Service;
-
-import com.uniwise.common.dto.response.PageResponse;
-import com.uniwise.search_service.modules.course.CourseSearchService;
-import com.uniwise.search_service.modules.course.entity.CourseDocument;
-
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 
+import com.uniwise.common.dto.response.PageResponse;
+import com.uniwise.platform_event_contract.event.course.CourseMetricsSyncEvent;
+import com.uniwise.search_service.modules.course.CourseSearchService;
+import com.uniwise.search_service.modules.course.entity.CourseDocument;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.elasticsearch.BulkFailureException;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.document.Document;
+import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
+import org.springframework.data.elasticsearch.core.query.UpdateQuery;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
@@ -30,7 +35,7 @@ public class CourseSearchServiceImpl implements CourseSearchService {
     private final ElasticsearchOperations elasticsearchOperations;
 
     @Override
-    @PreAuthorize("hasAuthority('search:all-courses')")
+    @PreAuthorize("hasAuthority('search:all-course')")
     public PageResponse<CourseDocument> searchCourses(String keyword, int page, int size) {
         return searchCourses(keyword, null, null, page, size);
     }
@@ -40,21 +45,23 @@ public class CourseSearchServiceImpl implements CourseSearchService {
         return searchCourses(keyword, "PUBLISHED", null, page, size);
     }
 
+    @Override
+    @PreAuthorize("hasAuthority('search:creator-course')")
+    public PageResponse<CourseDocument> searchCreatorCourses(String keyword, String creatorId, int page, int size) {
+        return searchCourses(keyword, null, creatorId, page, size);
+    }
+
     /**
      * Hàm dùng chung để tìm kiếm khóa học dựa trên từ khóa và trạng thái (nếu có).
      * Hàm này sử dụng Elasticsearch NativeQuery để thực thi tìm kiếm nâng cao.
      * 
      * @param keyword Từ khóa tìm kiếm (có thể rỗng)
      * @param status  Trạng thái khóa học (ví dụ: "PUBLISHED", "DRAFT"). Nếu null sẽ bỏ qua điều kiện trạng thái
+     * @param creatorId ID của người tạo khóa học (có thể rỗng)
      * @param page    Số thứ tự trang (0-indexed)
      * @param size    Số lượng phần tử trên mỗi trang
      * @return        PageResponse chứa danh sách khóa học và thông tin phân trang
      */
-    @Override
-    public PageResponse<CourseDocument> searchCreatorCourses(String keyword, String creatorId, int page, int size) {
-        return searchCourses(keyword, null, creatorId, page, size);
-    }
-
     private PageResponse<CourseDocument> searchCourses(String keyword, String status, String creatorId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         
@@ -125,5 +132,40 @@ public class CourseSearchServiceImpl implements CourseSearchService {
                 .totalPages((int) Math.ceil((double) searchHits.getTotalHits() / size))
                 .last((page + 1) * size >= searchHits.getTotalHits())
                 .build();
+    }
+
+    @Override
+    public void bulkUpdateMetrics(List<CourseMetricsSyncEvent.CourseMetricPayload> payloads) {
+        if (payloads == null || payloads.isEmpty()) {
+            return;
+        }
+
+        List<UpdateQuery> updateQueries = payloads.stream()
+            .map(payload -> {
+                Document document = Document.create();
+                if (payload.getStudentCount() != null) document.put("studentCount", payload.getStudentCount());
+                if (payload.getAverageRating() != null) document.put("averageRating", payload.getAverageRating());
+                if (payload.getTotalReviews() != null) document.put("totalReviews", payload.getTotalReviews());
+                if (payload.getTotalSections() != null) document.put("totalSections", payload.getTotalSections());
+                if (payload.getTotalLessons() != null) document.put("totalLessons", payload.getTotalLessons());
+
+                return UpdateQuery.builder(payload.getCourseId())
+                        .withDocument(document)
+                        .withDocAsUpsert(false)
+                        .build();
+            })
+            .collect(Collectors.toList());
+
+        try {
+            elasticsearchOperations.bulkUpdate(updateQueries, IndexCoordinates.of("courses"));
+            log.info("Successfully processed bulk update for {} course metrics", payloads.size());
+        } catch (BulkFailureException e) {
+            log.warn("Bulk update had failures (usually missing documents). Error: {}", e.getMessage());
+            // We ignore this exception so the message doesn't go to DLQ for missing documents. 
+            // The valid documents in the bulk request are successfully updated by Elasticsearch.
+        } catch (Exception e) {
+            log.error("Error executing bulk update: ", e);
+            throw e; // Rethrow to let RabbitMQ handle DLQ routing for actual system errors
+        }
     }
 }

@@ -11,6 +11,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.uniwise.common.dto.request.ReorderItemRequest;
+import com.uniwise.common.dto.request.ReorderRequest;
 import com.uniwise.common.dto.request.SectionCreateRequest;
 import com.uniwise.common.dto.request.SectionUpdateRequest;
 import com.uniwise.common.dto.response.PageResponse;
@@ -38,6 +40,7 @@ public class SectionServiceImpl implements SectionService {
     SectionRepository sectionRepository;
     CourseRepository courseRepository;
     SectionMapper sectionMapper;
+    com.uniwise.course_service.modules.course_mgmt.course.helper.CourseServiceHelper courseServiceHelper;
 
     // ===== CREATE =====
     @Override
@@ -75,6 +78,7 @@ public class SectionServiceImpl implements SectionService {
 
         // 3. Persist
         Section saved = sectionRepository.save(section);
+        courseServiceHelper.incrementTotalSectionsAndQueueSync(request.getCourseId());
         log.info("Section created successfully with id: {}, publicId: {}", saved.getId(), saved.getPublicId());
 
         return sectionMapper.toResponse(saved);
@@ -162,6 +166,7 @@ public class SectionServiceImpl implements SectionService {
 
         sectionRepository.delete(section);
         sectionRepository.shiftSortOrderDown(courseId, deletedSortOrder);
+        courseServiceHelper.decrementTotalSectionsAndQueueSync(courseId);
         
         log.info("Section deleted successfully with publicId: {}", publicId);
     }
@@ -170,9 +175,9 @@ public class SectionServiceImpl implements SectionService {
     @Override
     @PreAuthorize("hasAuthority('section:update')")
     @Transactional(rollbackFor = Exception.class)
-    public void reorder(String courseId, com.uniwise.common.dto.request.ReorderRequest request) {
+    public void reorder(String courseId, ReorderRequest request) {
         log.info("Bulk reordering sections in course: {}", courseId);
-        for (com.uniwise.common.dto.request.ReorderItemRequest item : request.getItems()) {
+        for (ReorderItemRequest item : request.getItems()) {
             Section section = sectionRepository.findByPublicId(item.getId())
                     .orElseThrow(() -> new HttpException(SectionError.SECTION_NOT_FOUND));
             if (section.getCourse().getId().equals(courseId)) {

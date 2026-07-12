@@ -21,5 +21,10 @@ public interface CourseService {
             String sortBy, String sortDir);
     Course getEntityByPublicId(String publicId);
     Course getEntityById(String id);
+    void incrementStudentCountAndQueueSync(String courseId);
+    void incrementTotalSectionsAndQueueSync(String courseId);
+    void decrementTotalSectionsAndQueueSync(String courseId);
+    void incrementTotalLessonsAndQueueSync(String courseId);
+    void decrementTotalLessonsAndQueueSync(String courseId);
 }
 

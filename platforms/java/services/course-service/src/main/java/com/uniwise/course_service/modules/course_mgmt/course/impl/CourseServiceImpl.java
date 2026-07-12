@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ import com.uniwise.course_service.modules.course_mgmt.course.CourseService;
 import com.uniwise.course_service.modules.course_mgmt.course.entity.Course;
 import com.uniwise.course_service.modules.course_mgmt.course.mapper.CourseMapper;
 import com.uniwise.course_service.modules.course_mgmt.course.repository.CourseRepository;
+import com.uniwise.course_service.modules.course_mgmt.course.repository.CourseSyncQueueRepository;
 import com.uniwise.course_service.modules.pricing.entity.PriceTier;
 import com.uniwise.course_service.modules.pricing.repository.PriceTierRepository;
 import com.uniwise.course_service.modules.course_mgmt.lesson.repository.LessonRepository;
@@ -54,6 +56,7 @@ import lombok.extern.slf4j.Slf4j;
 public class CourseServiceImpl implements CourseService {
 
     CourseRepository courseRepository;
+    CourseSyncQueueRepository courseSyncQueueRepository;
     // TODO: cần sửa vì quy phạm quy tắc layer
     PriceTierRepository priceTierRepository;
     CourseMapper courseMapper;
@@ -211,7 +214,7 @@ public class CourseServiceImpl implements CourseService {
     }
 
     private boolean hasAdminAuthority() {
-        org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) return false;
         return auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("admin:all"));
@@ -345,6 +348,40 @@ public class CourseServiceImpl implements CourseService {
                 .orElseThrow(() -> new HttpException(CourseError.COURSE_NOT_FOUND));
     }
 
+    @Override
+    @Transactional
+    public void incrementStudentCountAndQueueSync(String courseId) {
+        courseRepository.incrementStudentCount(courseId);
+        courseSyncQueueRepository.insertIgnoreCourseId(courseId);
+    }
+
+    @Override
+    @Transactional
+    public void incrementTotalSectionsAndQueueSync(String courseId) {
+        courseRepository.incrementTotalSections(courseId);
+        courseSyncQueueRepository.insertIgnoreCourseId(courseId);
+    }
+
+    @Override
+    @Transactional
+    public void decrementTotalSectionsAndQueueSync(String courseId) {
+        courseRepository.decrementTotalSections(courseId);
+        courseSyncQueueRepository.insertIgnoreCourseId(courseId);
+    }
+
+    @Override
+    @Transactional
+    public void incrementTotalLessonsAndQueueSync(String courseId) {
+        courseRepository.incrementTotalLessons(courseId);
+        courseSyncQueueRepository.insertIgnoreCourseId(courseId);
+    }
+
+    @Override
+    @Transactional
+    public void decrementTotalLessonsAndQueueSync(String courseId) {
+        courseRepository.decrementTotalLessons(courseId);
+        courseSyncQueueRepository.insertIgnoreCourseId(courseId);
+    }
 
     private String getCurrentAccountId() {
         SecurityContext context = SecurityContextHolder.getContext();

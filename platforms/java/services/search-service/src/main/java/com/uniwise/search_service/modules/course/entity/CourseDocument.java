@@ -40,4 +40,19 @@ public class CourseDocument {
 
     @Field(type = FieldType.Keyword)
     private String priceTierId;
+
+    @Field(type = FieldType.Integer)
+    private Integer studentCount;
+
+    @Field(type = FieldType.Double)
+    private Double averageRating;
+
+    @Field(type = FieldType.Integer)
+    private Integer totalReviews;
+
+    @Field(type = FieldType.Integer)
+    private Integer totalLessons;
+
+    @Field(type = FieldType.Integer)
+    private Integer totalSections;
 }

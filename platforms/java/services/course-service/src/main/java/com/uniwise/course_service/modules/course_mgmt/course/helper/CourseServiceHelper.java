@@ -19,4 +19,24 @@ public class CourseServiceHelper {
     public Course getCourseEntityById(String id) {
         return applicationContext.getBean(CourseService.class).getEntityById(id);
     }
+
+    public void incrementStudentCountAndQueueSync(String courseId) {
+        applicationContext.getBean(CourseService.class).incrementStudentCountAndQueueSync(courseId);
+    }
+
+    public void incrementTotalSectionsAndQueueSync(String courseId) {
+        applicationContext.getBean(CourseService.class).incrementTotalSectionsAndQueueSync(courseId);
+    }
+
+    public void decrementTotalSectionsAndQueueSync(String courseId) {
+        applicationContext.getBean(CourseService.class).decrementTotalSectionsAndQueueSync(courseId);
+    }
+
+    public void incrementTotalLessonsAndQueueSync(String courseId) {
+        applicationContext.getBean(CourseService.class).incrementTotalLessonsAndQueueSync(courseId);
+    }
+
+    public void decrementTotalLessonsAndQueueSync(String courseId) {
+        applicationContext.getBean(CourseService.class).decrementTotalLessonsAndQueueSync(courseId);
+    }
 }

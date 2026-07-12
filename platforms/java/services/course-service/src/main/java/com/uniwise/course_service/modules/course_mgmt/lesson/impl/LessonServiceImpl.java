@@ -17,6 +17,8 @@ import com.uniwise.common.dto.response.LessonResponse;
 import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.LessonError;
+import com.uniwise.common.exception.errors.ValidationError;
+import com.uniwise.course_service.modules.course_mgmt.course.helper.CourseServiceHelper;
 import com.uniwise.course_service.modules.course_mgmt.lesson.LessonService;
 import com.uniwise.course_service.modules.course_mgmt.lesson.entity.Lesson;
 import com.uniwise.course_service.modules.course_mgmt.lesson.mapper.LessonMapper;
@@ -38,6 +40,7 @@ public class LessonServiceImpl implements LessonService {
     LessonRepository lessonRepository;
     SectionRepository sectionRepository;
     LessonMapper lessonMapper;
+    CourseServiceHelper courseServiceHelper;
 
     // ===== CREATE =====
     @Override
@@ -72,7 +75,7 @@ public class LessonServiceImpl implements LessonService {
             } while (lessonRepository.existsByPublicId(publicId));
         } else {
             if (lessonRepository.existsByPublicId(publicId)) {
-                throw new HttpException(com.uniwise.common.exception.errors.ValidationError.INVALID_REQUEST_BODY);
+                throw new HttpException(ValidationError.INVALID_REQUEST_BODY);
             }
         }
         lesson.setPublicId(publicId);
@@ -82,6 +85,7 @@ public class LessonServiceImpl implements LessonService {
 
         // 3. Persist
         Lesson saved = lessonRepository.save(lesson);
+        courseServiceHelper.incrementTotalLessonsAndQueueSync(section.getCourse().getId());
         log.info("Lesson created successfully with id: {}, publicId: {}", saved.getId(), saved.getPublicId());
 
         // 4. Inter-service call / Message Broker (Nếu có)
@@ -200,6 +204,7 @@ public class LessonServiceImpl implements LessonService {
 
         lessonRepository.delete(lesson);
         lessonRepository.shiftSortOrderDown(sectionId, deletedSortOrder);
+        courseServiceHelper.decrementTotalLessonsAndQueueSync(lesson.getSection().getCourse().getId());
         
         log.info("Lesson deleted successfully with publicId: {}", publicId);
 

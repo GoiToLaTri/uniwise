@@ -102,6 +102,10 @@ public class LearningProgressServiceImpl implements LearningProgressService {
                 .build();
 
         userCourseRepository.save(userCourse);
+        
+        // Trigger course sync queue and increment student count via helper to avoid layer violation
+        courseServiceHelper.incrementStudentCountAndQueueSync(courseId);
+
         log.info("Successfully enrolled accountId: {} to courseId: {}", accountId, courseId);
     }
 

@@ -7,6 +7,7 @@ public final class RoutingKeys {
     public static final String COURSE_CREATED = "course.created";
     public static final String COURSE_UPDATED = "course.updated";
     public static final String COURSE_DELETED = "course.deleted";
+    public static final String COURSE_METRICS_SYNC = "course.metrics.sync";
     
     // User routing keys
     public static final String USER_CREATED = "user.created";
