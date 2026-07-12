@@ -18,49 +18,51 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CourseSearchController {
 
-    private final CourseSearchService courseSearchService;
+        private final CourseSearchService courseSearchService;
 
-    @GetMapping
-    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('search:all-course')")
-    public ApiResponse<PageResponse<CourseDocument>> search(
-            @RequestParam(defaultValue = "") String keyword,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-            
-        return ApiResponse.<PageResponse<CourseDocument>>builder()
-                .code("OK")
-                .message("Search all courses successfully")
-                .data(courseSearchService.searchCourses(keyword, page, size))
-                .build();
-    }
+        @GetMapping
+        @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('search:all-course')")
+        public ApiResponse<PageResponse<CourseDocument>> search(
+                        @RequestParam(defaultValue = "") String keyword,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size) {
 
-    @GetMapping("/published")
-    public ApiResponse<PageResponse<CourseDocument>> searchPublished(
-            @RequestParam(defaultValue = "") String keyword,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-            
-        return ApiResponse.<PageResponse<CourseDocument>>builder()
-                .code("OK")
-                .message("Search published courses successfully")
-                .data(courseSearchService.searchPublishedCourses(keyword, page, size))
-                .build();
-    }
+                return ApiResponse.<PageResponse<CourseDocument>>builder()
+                                .code("OK")
+                                .message("Search all courses successfully")
+                                .data(courseSearchService.searchCourses(keyword, page, size))
+                                .build();
+        }
 
-    @GetMapping("/creator")
-    public ApiResponse<PageResponse<CourseDocument>> searchCreatorCourses(
-            Principal principal,
-            @RequestParam(defaultValue = "") String keyword,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-            
-        // Get the current creator's ID from the Principal object provided by Spring Security
-        String currentUserId = principal.getName();
-            
-        return ApiResponse.<PageResponse<CourseDocument>>builder()
-                .code("OK")
-                .message("Search creator courses successfully")
-                .data(courseSearchService.searchCreatorCourses(keyword, currentUserId, page, size))
-                .build();
-    }
+        @GetMapping("/published")
+        public ApiResponse<PageResponse<CourseDocument>> searchPublished(
+                        @RequestParam(defaultValue = "") String keyword,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size) {
+
+                return ApiResponse.<PageResponse<CourseDocument>>builder()
+                                .code("OK")
+                                .message("Search published courses successfully")
+                                .data(courseSearchService.searchPublishedCourses(keyword, page, size))
+                                .build();
+        }
+
+        @GetMapping("/creator")
+        public ApiResponse<PageResponse<CourseDocument>> searchCreatorCourses(
+                        Principal principal,
+                        @RequestParam(defaultValue = "") String keyword,
+                        @RequestParam(required = false) String status,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size) {
+
+                // Get the current creator's ID from the Principal object provided by Spring
+                // Security
+                String currentUserId = principal.getName();
+
+                return ApiResponse.<PageResponse<CourseDocument>>builder()
+                                .code("OK")
+                                .message("Search creator courses successfully")
+                                .data(courseSearchService.searchCreatorCourses(keyword, status, currentUserId, page, size))
+                                .build();
+        }
 }
