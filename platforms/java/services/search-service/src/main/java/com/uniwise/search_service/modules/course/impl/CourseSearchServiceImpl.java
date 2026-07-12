@@ -10,6 +10,7 @@ import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.platform_event_contract.event.course.CourseMetricsSyncEvent;
 import com.uniwise.search_service.modules.course.CourseSearchService;
 import com.uniwise.search_service.modules.course.entity.CourseDocument;
+import com.uniwise.search_service.modules.redis.RedisService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ import org.springframework.stereotype.Service;
 public class CourseSearchServiceImpl implements CourseSearchService {
 
     private final ElasticsearchOperations elasticsearchOperations;
+    private final RedisService redisService;
 
     @Override
     @PreAuthorize("hasAuthority('search:all-course')")
@@ -42,6 +44,24 @@ public class CourseSearchServiceImpl implements CourseSearchService {
 
     @Override
     public PageResponse<CourseDocument> searchPublishedCourses(String keyword, int page, int size) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            String cacheKey = "search_courses::published:page:" + page + ":size:" + size;
+            
+            // 1. Check Redis
+            PageResponse<CourseDocument> cached = redisService.getKey(cacheKey, new com.fasterxml.jackson.core.type.TypeReference<PageResponse<CourseDocument>>() {});
+            if (cached != null) {
+                return cached;
+            }
+            
+            // 2. Query ES
+            PageResponse<CourseDocument> result = searchCourses(keyword, "PUBLISHED", null, page, size);
+            
+            // 3. Save to Redis
+            if (result != null) {
+                redisService.setKey(cacheKey, result, 5L, java.util.concurrent.TimeUnit.MINUTES);
+            }
+            return result;
+        }
         return searchCourses(keyword, "PUBLISHED", null, page, size);
     }
 

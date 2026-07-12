@@ -15,6 +15,7 @@ import com.uniwise.platform_event_contract.event.course.CourseDeletedEvent;
 import com.uniwise.platform_event_contract.event.course.CourseUpdatedEvent;
 import com.uniwise.search_service.modules.course.entity.CourseDocument;
 import com.uniwise.search_service.modules.course.repository.CourseDocumentRepository;
+import com.uniwise.search_service.modules.redis.RedisService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 public class CourseEventListener {
 
     private final CourseDocumentRepository courseDocumentRepository;
+    private final RedisService redisService;
 
     @RabbitListener(bindings = @QueueBinding(
             value = @Queue(name = "search.course.created", durable = "true"),
@@ -65,6 +67,9 @@ public class CourseEventListener {
             doc.setThumbnailUrl(event.getThumbnailUrl());
             doc.setPriceTierId(event.getPriceTierId());
             courseDocumentRepository.save(doc);
+            
+            // Clear cache to ensure data consistency
+            redisService.deleteKeysByPattern("search_courses::published:*");
         });
     }
 
@@ -78,5 +83,8 @@ public class CourseEventListener {
         log.info("Received CourseDeletedEvent for deletion from index: {}", event.getId());
         
         courseDocumentRepository.deleteById(event.getId());
+        
+        // Clear cache to ensure data consistency
+        redisService.deleteKeysByPattern("search_courses::published:*");
     }
 }

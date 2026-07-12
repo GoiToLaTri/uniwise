@@ -1,14 +1,8 @@
 package com.uniwise.search_service.modules.course.consumer;
 
-import org.springframework.amqp.core.ExchangeTypes;
-import org.springframework.amqp.rabbit.annotation.Exchange;
-import org.springframework.amqp.rabbit.annotation.Queue;
-import org.springframework.amqp.rabbit.annotation.QueueBinding;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
-import com.uniwise.platform_event_contract.constant.Exchanges;
-import com.uniwise.platform_event_contract.constant.RoutingKeys;
 import com.uniwise.platform_event_contract.event.course.CourseMetricsSyncEvent;
 import com.uniwise.platform_event_contract.envelope.EventEnvelope;
 import com.uniwise.search_service.config.RabbitMQConfig;

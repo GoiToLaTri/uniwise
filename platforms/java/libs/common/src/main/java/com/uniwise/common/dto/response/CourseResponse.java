@@ -30,4 +30,11 @@ public class CourseResponse {
     private Double progressPercentage;
     private Integer completedLessonsCount;
     private Integer totalLessonsCount;
+    
+    // New fields
+    private Integer studentCount;
+    private Double averageRating;
+    private Integer totalReviews;
+    private Integer totalSections;
+    private Integer totalLessons;
 }
