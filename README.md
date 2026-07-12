@@ -1,12 +1,12 @@
 # Uniwise Backend - Hệ thống E-learning Microservices
 
-Dự án **Uniwise Backend** là hệ thống máy chủ cung cấp giải pháp E-learning toàn diện, được thiết kế theo kiến trúc Microservices hướng sự kiện nhằm đảm bảo hiệu năng cao, khả năng mở rộng tối đa và bảo mật tối ưu cho các tác vụ truyền tải video học trực tuyến.
+Dự án **Uniwise Backend** là hệ thống máy chủ cung cấp nền tảng E-learning, được thiết kế theo kiến trúc Microservices hướng sự kiện nhằm cải thiện hiệu năng, khả năng mở rộng và tính bảo mật cho các tác vụ truyền tải video học trực tuyến.
 
 ---
 
 ## 1. Dự án giải quyết vấn đề gì? (Problem Statement)
 Hệ thống học trực tuyến (E-learning) hiện đại đối mặt với nhiều bài toán khó về hiệu năng, bảo mật và khả năng mở rộng:
-- **Tải trọng cực lớn khi xử lý Video**: Quá trình đăng tải và xử lý video dung lượng lớn (transcoding) cực kỳ tiêu tốn CPU và RAM. Nếu thực hiện đồng bộ trên máy chủ nghiệp vụ chính, hệ thống dễ bị quá tải, gây tắc nghẽn hoặc sập các tính năng khác (đăng nhập, mua khóa học, v.v.).
+- **Tải trọng lớn khi xử lý Video**: Quá trình đăng tải và xử lý video dung lượng lớn (transcoding) tiêu tốn nhiều CPU và RAM. Nếu thực hiện đồng bộ trên máy chủ nghiệp vụ chính, hệ thống dễ bị quá tải, gây tắc nghẽn hoặc sập các tính năng khác (đăng nhập, mua khóa học, v.v.).
 - **Tìm kiếm dữ liệu lớn tốc độ cao (Full-text Search)**: Truy vấn tìm kiếm phức tạp trên CSDL quan hệ (MySQL) không tối ưu về tốc độ, không hỗ trợ tốt tìm kiếm mờ (fuzzy search) và dễ gây quá tải cho DB chính khi lượng người truy cập tăng đột biến.
 - **Tối ưu băng thông và Trải nghiệm người dùng**: Truyền phát tệp video thô (`.mp4`) gây tốn băng thông lớn và thời gian chờ tải lâu cho học viên (nhất là khi mạng yếu). Hệ thống cần hỗ trợ phát trực tuyến thích ứng (Adaptive Bitrate Streaming) để tự động điều chỉnh chất lượng theo tốc độ mạng.
 - **Bảo mật Nội dung**: Video bài giảng dễ bị tải lậu hoặc chia sẻ bất hợp pháp nếu đường dẫn video gốc hoặc lưu trữ bị lộ.
@@ -15,14 +15,14 @@ Hệ thống học trực tuyến (E-learning) hiện đại đối mặt với 
 **Giải pháp của Uniwise**:
 * **Kiến trúc Microservices**: Tách riêng các luồng nghiệp vụ thành các dịch vụ độc lập như Quản lý khóa học (`course-service`), Hồ sơ người dùng (`user-service`), Xác thực (`identity-service`), và Lưu trữ (`media-service`).
 * **Xử lý bất đồng bộ qua RabbitMQ & Worker chuyên biệt**: Khi giảng viên đăng tải video, tác vụ chuyển đổi định dạng (transcoding) được gửi qua RabbitMQ đến dịch vụ `ffmpeg-worker` hoạt động độc lập để xử lý ngầm, giúp giải phóng tài nguyên lập tức cho server nghiệp vụ.
-* **Đồng bộ dữ liệu & Tìm kiếm với Elasticsearch**: Sử dụng Elasticsearch lưu trữ index khóa học. Khi có thay đổi từ `course-service`, dữ liệu được đồng bộ sang `search-service` qua RabbitMQ theo thời gian thực, đảm bảo tốc độ tìm kiếm siêu tốc và giảm tải cho DB.
+* **Đồng bộ dữ liệu & Tìm kiếm với Elasticsearch**: Sử dụng Elasticsearch lưu trữ index khóa học. Khi có thay đổi từ `course-service`, dữ liệu được đồng bộ sang `search-service` qua RabbitMQ theo thời gian thực, giúp cải thiện tốc độ tìm kiếm và giảm tải cho DB.
 * **Stream HLS (HTTP Live Streaming)**: Video được chia nhỏ thành nhiều phân đoạn `.ts` và quản lý bởi danh sách phát `.m3u8`. Điều này vừa giúp tiết kiệm băng thông (tải đến đâu xem đến đó), vừa ngăn chặn việc tải tệp video gốc một cách dễ dàng.
 * **OpenResty (Nginx + Lua) Gateway**: Lớp bảo mật ngoài cùng xác thực chữ ký JWT ngay ở biên thông qua Lua script, ngăn các truy cập trái phép tiếp cận sâu hơn vào bên trong các microservice.
 
 ---
 
 ## 2. Kiến trúc tổng thể (Overall Architecture)
-Hệ thống kết hợp mô hình **Event-driven Microservices (Kiến trúc hướng sự kiện)** cho các tác vụ xử lý bất đồng bộ nặng và **gRPC (giao tiếp đồng bộ hiệu năng cao)** cho các truy vấn nội bộ.
+Hệ thống kết hợp mô hình **Event-driven Microservices (Kiến trúc hướng sự kiện)** cho các tác vụ xử lý bất đồng bộ và **gRPC (giao tiếp đồng bộ)** cho các truy vấn nội bộ.
 
 ### Sơ đồ kiến trúc tổng thể (System Architecture)
 
@@ -69,7 +69,7 @@ graph TD
 | :--- | :--- | :--- |
 | **Language & Core** | Java 21, Spring Boot 3.5.15 | Ngôn ngữ phát triển chính và Framework xây dựng ứng dụng |
 | **Routing & API Gateway** | OpenResty (Nginx + Lua), Spring Cloud Gateway 2025 | Chặn lọc yêu cầu không hợp lệ từ biên và phân phối request |
-| **Communication (Đồng bộ)** | gRPC, Protocol Buffers | Đảm bảo tốc độ giao tiếp nội bộ siêu nhanh giữa các service |
+| **Communication (Đồng bộ)** | gRPC, Protocol Buffers | Hỗ trợ giao tiếp nội bộ nhanh và ổn định giữa các service |
 | **Communication (Bất đồng bộ)** | RabbitMQ | Điều phối các sự kiện nghiệp vụ dưới dạng hướng sự kiện |
 | **Hệ quản trị CSDL** | MySQL 8 | Lưu trữ thông tin tài khoản, khóa học, dữ liệu quan hệ |
 | **Search Engine & Log** | Elasticsearch 9, Kibana 9 | Tìm kiếm Full-text cho khóa học và theo dõi log |
@@ -130,7 +130,7 @@ sequenceDiagram
 ---
 
 ### 4.2 Quy trình đồng bộ dữ liệu tìm kiếm (Elasticsearch Data Sync Pipeline)
-Để đảm bảo dữ liệu luôn nhất quán và cho phép người dùng tìm kiếm toàn văn tốc độ cao, hệ thống đồng bộ ngầm dữ liệu từ MySQL sang Elasticsearch thông qua luồng sự kiện RabbitMQ:
+Để duy trì tính nhất quán của dữ liệu và cho phép người dùng tìm kiếm toàn văn hiệu quả, hệ thống đồng bộ ngầm dữ liệu từ MySQL sang Elasticsearch thông qua luồng sự kiện RabbitMQ:
 
 ```mermaid
 sequenceDiagram
