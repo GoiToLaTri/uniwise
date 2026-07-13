@@ -17,7 +17,7 @@ Hệ thống học trực tuyến (E-learning) hiện đại đối mặt với 
 * **Xử lý bất đồng bộ qua RabbitMQ & Worker chuyên biệt**: Khi giảng viên đăng tải video, tác vụ chuyển đổi định dạng (transcoding) được gửi qua RabbitMQ đến dịch vụ `ffmpeg-worker` hoạt động độc lập để xử lý ngầm, giúp giải phóng tài nguyên lập tức cho server nghiệp vụ.
 * **Đồng bộ dữ liệu & Tìm kiếm với Elasticsearch**: Sử dụng Elasticsearch lưu trữ index khóa học. Khi có thay đổi từ `course-service`, dữ liệu được đồng bộ sang `search-service` qua RabbitMQ theo thời gian thực, giúp cải thiện tốc độ tìm kiếm và giảm tải cho DB.
 * **Stream HLS (HTTP Live Streaming)**: Video được chia nhỏ thành nhiều phân đoạn `.ts` và quản lý bởi danh sách phát `.m3u8`. Điều này vừa giúp tiết kiệm băng thông (tải đến đâu xem đến đó), vừa ngăn chặn việc tải tệp video gốc một cách dễ dàng.
-* **OpenResty (Nginx + Lua) Gateway**: Lớp bảo mật ngoài cùng xác thực chữ ký JWT ngay ở biên thông qua Lua script, ngăn các truy cập trái phép tiếp cận sâu hơn vào bên trong các microservice.
+* **OpenResty (Nginx + Lua) Gateway**: Hoạt động như lớp bảo mật ngoài cùng, sử dụng Lua script để kiểm tra tính hợp lệ của token trong Redis, sau đó tự động cấp phát (ký) một Gateway Token nội bộ để truyền thông tin định danh người dùng xuống các microservice một cách an toàn.
 
 ---
 
@@ -65,19 +65,29 @@ graph TD
 
 ## 3. Các Tech Stack sử dụng (Technology Stack)
 
-| Tầng / Thành phần | Công nghệ | Vai trò |
-| :--- | :--- | :--- |
-| **Language & Core** | Java 21, Spring Boot 3.5.15 | Ngôn ngữ phát triển chính và Framework xây dựng ứng dụng |
-| **Routing & API Gateway** | OpenResty (Nginx + Lua), Spring Cloud Gateway 2025 | Chặn lọc yêu cầu không hợp lệ từ biên và phân phối request |
-| **Communication (Đồng bộ)** | gRPC, Protocol Buffers | Hỗ trợ giao tiếp nội bộ nhanh và ổn định giữa các service |
-| **Communication (Bất đồng bộ)** | RabbitMQ | Điều phối các sự kiện nghiệp vụ dưới dạng hướng sự kiện |
-| **Hệ quản trị CSDL** | MySQL 8 | Lưu trữ thông tin tài khoản, khóa học, dữ liệu quan hệ |
-| **Search Engine & Log** | Elasticsearch 9, Kibana 9 | Tìm kiếm Full-text cho khóa học và theo dõi log |
-| **Bộ nhớ đệm & Monitor** | Redis 8, RedisInsight | Tăng tốc độ truy xuất thông tin tĩnh và theo dõi cache |
-| **Object Storage** | MinIO | Lưu trữ video thô, thumbnail và các tệp HLS đã xử lý |
-| **Media Processing** | FFmpeg (Chạy độc lập trên container) | Thực hiện transcode video sang luồng phát chuẩn HLS |
-| **Build & Productivity** | Maven, Lombok, MapStruct, Jakarta Validation | Hỗ trợ cấu trúc code gọn gàng, ánh xạ DTO nhanh và kiểm định dữ liệu đầu vào |
-| **Triển khai** | Docker, Docker Compose | Đóng gói hạ tầng phát triển đồng nhất giữa các máy local |
+| Tầng / Thành phần | Công nghệ | Phiên bản | Vai trò |
+| :--- | :--- | :--- | :--- |
+| **Language & Core** | Java | **21** | Ngôn ngữ phát triển chính |
+| **Framework** | Spring Boot | **4.1.0** | Framework xây dựng ứng dụng (spring-boot-starter-parent) |
+| **API Gateway (biên)** | OpenResty (Nginx + Lua) | **1.0.0** | Chặn lọc yêu cầu từ biên, kiểm tra Access Token qua Redis |
+| **API Gateway (nội bộ)** | Spring Cloud Gateway | (managed by Spring Boot) | Định tuyến và phân phối request đến microservice |
+| **Communication (Đồng bộ — RPC)** | gRPC | **1.69.0** | Giao tiếp nội bộ nhanh và ổn định giữa các service |
+| **Communication (Đồng bộ — Schema)** | Protocol Buffers | **4.29.3** | Định nghĩa contract và serialization cho gRPC |
+| **Communication (Bất đồng bộ)** | RabbitMQ | **3.13-management-alpine** | Điều phối các sự kiện nghiệp vụ dưới dạng hướng sự kiện |
+| **Hệ quản trị CSDL** | MySQL | **8.0.44-debian** | Lưu trữ thông tin tài khoản, khóa học, dữ liệu quan hệ |
+| **Search Engine** | Elasticsearch | **9.0.3** | Tìm kiếm Full-text cho khóa học |
+| **Log Visualization** | Kibana | **9.0.3** | Theo dõi và phân tích log Elasticsearch |
+| **Bộ nhớ đệm** | Redis | **8.4.0** | Cache và quản lý Session token |
+| **Cache Monitor** | RedisInsight | **2.70** | Theo dõi và quản lý dữ liệu Redis |
+| **Object Storage** | MinIO | **RELEASE.2024-06-13** | Lưu trữ video thô, thumbnail và các tệp HLS đã xử lý |
+| **Media Processing** | FFmpeg | jrottenberg/ffmpeg:latest | Thực hiện transcode video sang luồng phát chuẩn HLS |
+| **Ánh xạ DTO** | MapStruct | **1.6.3** | Chuyển đổi Entity ↔ DTO tự động, hiệu năng cao |
+| **Boilerplate** | Lombok | (managed by Spring Boot) | Giảm thiểu code lặp (getter, setter, constructor) |
+| **Binding** | lombok-mapstruct-binding | **0.2.0** | Tích hợp annotation processor Lombok + MapStruct |
+| **Validation** | Jakarta Validation | (managed by Spring Boot) | Kiểm định dữ liệu đầu vào tại tầng Controller |
+| **API Documentation** | SpringDoc OpenAPI (Swagger UI) | **3.0.3** | Tự động sinh tài liệu API tương tác |
+| **Password Hashing** | Bouncy Castle (Argon2) | **1.84** | Băm mật khẩu bảo mật cao tại identity-service |
+| **Triển khai** | Docker, Docker Compose | - | Đóng gói hạ tầng phát triển đồng nhất giữa các máy local |
 
 ---
 
