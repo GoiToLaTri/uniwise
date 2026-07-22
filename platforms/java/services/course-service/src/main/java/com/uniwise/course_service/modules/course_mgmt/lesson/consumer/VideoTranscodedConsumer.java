@@ -24,18 +24,27 @@ public class VideoTranscodedConsumer {
         VideoTranscodedEvent event = envelope.getPayload();
         String lessonId = event.getLessonId();
         String videoUrl = event.getVideoUrl();
+        Long durationMillis = event.getDurationMillis();
 
-        log.info("Received VideoTranscodedEvent: lessonId={}, status={}, videoUrl={}", lessonId, event.getStatus(), videoUrl);
+        log.info("Received VideoTranscodedEvent: lessonId={}, status={}, videoUrl={}, durationMillis={}",
+                lessonId, event.getStatus(), videoUrl, durationMillis);
 
         try {
             lessonRepository.findByPublicId(lessonId).ifPresentOrElse(lesson -> {
-                if ("FAILED".equalsIgnoreCase(event.getStatus())) {
+                if (!"SUCCESS".equalsIgnoreCase(event.getStatus())) {
                     lesson.setStatus(Lesson.LessonStatus.FAILED);
-                    log.warn("Video transcoding failed for lesson publicId={}. Updated status to FAILED.", lessonId);
+                    log.warn("Video transcoding did not succeed for lesson publicId={} (status={}). Updated status to FAILED.",
+                            lessonId, event.getStatus());
+                } else if (durationMillis == null || durationMillis <= 0) {
+                    lesson.setStatus(Lesson.LessonStatus.FAILED);
+                    log.error("Video transcoding reported success with invalid duration for lesson publicId={}: {}. "
+                            + "Updated status to FAILED.", lessonId, durationMillis);
                 } else {
                     lesson.setStatus(Lesson.LessonStatus.READY);
                     lesson.setContentReference(videoUrl);
-                    log.info("Successfully updated status to READY and contentReference to {} for lesson publicId={}", videoUrl, lessonId);
+                    lesson.setDurationMillis(durationMillis);
+                    log.info("Successfully updated lesson publicId={} to READY with contentReference={} and durationMillis={}",
+                            lessonId, videoUrl, durationMillis);
                 }
                 lessonRepository.saveAndFlush(lesson);
             }, () -> {

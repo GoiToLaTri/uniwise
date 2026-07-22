@@ -16,6 +16,7 @@ public class LessonResponse {
     private String title;
     private String lessonType;
     private String contentReference;
+    private Long durationMillis;
     private String status;
     private Integer sortOrder;
     private Boolean isPreview;

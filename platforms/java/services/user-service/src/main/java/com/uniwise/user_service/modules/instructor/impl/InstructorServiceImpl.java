@@ -137,6 +137,7 @@ public class InstructorServiceImpl implements InstructorService {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('instructor:approve')")
     public InstructorProfileResponse approveInstructorProfile(String publicId, String reviewComment) {
         InstructorProfile instructorProfile = instructorProfileRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));
@@ -172,6 +173,7 @@ public class InstructorServiceImpl implements InstructorService {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('instructor:reject')")
     public InstructorProfileResponse rejectInstructorProfile(String publicId, String reviewComment) {
         InstructorProfile instructorProfile = instructorProfileRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));
@@ -196,6 +198,7 @@ public class InstructorServiceImpl implements InstructorService {
      * Dùng khi hồ sơ giảng viên đang ở trạng thái approved, muốn đình chỉ
      */
     @Override
+    @PreAuthorize("hasAuthority('instructor:suspend')")
     public InstructorProfileResponse suspendInstructorProfile(String publicId, String reviewComment) {
         InstructorProfile instructorProfile = instructorProfileRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));
@@ -225,6 +228,7 @@ public class InstructorServiceImpl implements InstructorService {
      * Dùng khi hồ sơ giản viên đang ở trạng thái suspended
      */
     @Override
+    @PreAuthorize("hasAuthority('instructor:reactivate')")
     public InstructorProfileResponse reactivateInstructorProfile(String publicId, String reviewComment) {
         InstructorProfile instructorProfile = instructorProfileRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));

@@ -13,4 +13,5 @@ public class VideoProcessedEvent {
     private String lessonId;
     private String bucketName;
     private String status; // SUCCESS or FAILED
+    private Long durationMillis;
 }

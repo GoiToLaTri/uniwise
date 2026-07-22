@@ -13,4 +13,5 @@ public class VideoTranscodedEvent {
     private String lessonId;
     private String videoUrl; // public HLS playlist.m3u8 URL
     private String status; // SUCCESS or FAILED
+    private Long durationMillis;
 }

@@ -65,11 +65,11 @@ public class AccountServiceImpl implements AccountService {
         account.setPassword(passwordEncoder.encode(request.getPassword()));
         // Set<Role> roles = roleService.getByNames(defaultRoles);
         // if (roles.isEmpty())
-        //     throw new HttpException(AccountError.DEFAULT_ROLES_NOT_FOUND);
+        // throw new HttpException(AccountError.DEFAULT_ROLES_NOT_FOUND);
         // account.setRoles(roles);
         Account saved = accountRepository.save(account);
         assignRoles(saved.getId(), defaultRoles);
-        
+
         CreateProfileRequest profileRequest = CreateProfileRequest.newBuilder()
                 .setAccountId(saved.getId())
                 .setEmail(saved.getEmail())
@@ -151,6 +151,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public void delete(String id) {
+        // TODO: Chặn Admin tự xóa chính mình
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new HttpException(AccountError.ACCOUNT_NOT_FOUND));
         accountRepository.delete(account);
@@ -158,8 +159,10 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public void toggleActive(String id) {
+        // TODO: Chặn Admin tự khóa tài khoản của chính mình
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new HttpException(AccountError.ACCOUNT_NOT_FOUND));
         account.setIsActive(!Boolean.TRUE.equals(account.getIsActive()));
@@ -181,9 +184,11 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    // @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public AccountResponse assignRoles(String id, Set<String> roleNames) {
         Account account = getEntityById(id);
+        // TODO: Thêm logic kiểm tra an toàn bảo mật (VD: Chỉ Super Admin mới được phép
+        // cấp quyền ADMIN cho người khác)
         Set<Role> rolesToAdd = roleService.getByNames(roleNames);
         // TODO: roles not found error info
         if (rolesToAdd.isEmpty())
@@ -200,9 +205,11 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    // @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public AccountResponse revokeRoles(String id, Set<String> roleNames) {
         Account account = getEntityById(id);
+        // TODO: Thêm logic kiểm tra an toàn bảo mật (VD: Không cho phép Admin tự thu
+        // hồi quyền ADMIN của chính mình)
         Set<Role> rolesToRemove = roleService.getByNames(roleNames);
         // TODO: roles not found error info
         if (rolesToRemove.isEmpty())

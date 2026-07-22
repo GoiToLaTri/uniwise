@@ -47,6 +47,13 @@ public class Lesson {
      */
     @Column(name = "content_reference", nullable = false, length = 255)
     private String contentReference;
+
+    /**
+     * Thời lượng video theo milliseconds; null khi lesson không phải video
+     * hoặc video chưa được xử lý thành công.
+     */
+    @Column(name = "duration_ms")
+    private Long durationMillis;
  
     /**
      * Trạng thái async: PROCESSING (đang encode) → READY (sẵn sàng xem)

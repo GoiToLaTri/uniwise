@@ -45,6 +45,7 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
         File localHlsFolder = ffmpegService.getLocalTempFile(hlsFolderName);
 
         boolean transcodeSuccess = false;
+        Long durationMillis = null;
 
         try {
             // Ensure HLS folder exists on Host
@@ -69,7 +70,11 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
             String containerInputPath = ffmpegService.getContainerFilePath(inputFileName);
             String containerHlsFolder = ffmpegService.getContainerFilePath(hlsFolderName);
 
-            // Step 3: Run ffmpeg command to convert to HLS format
+            // Step 3: Read and validate the source video duration
+            durationMillis = ffmpegService.probeDurationMillis(containerInputPath);
+            log.info("Probed video duration for lessonId={}: {} ms", lessonId, durationMillis);
+
+            // Step 4: Run ffmpeg command to convert to HLS format
             // Generates playlist.m3u8 and segment_xxx.ts files inside containerHlsFolder
             List<String> ffmpegArgs = List.of(
                     "-y",
@@ -90,11 +95,11 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
 
             if (!success) {
                 log.error("FFmpeg HLS conversion failed for lessonId={}. Aborting upload.", lessonId);
-                publishProcessedEvent(lessonId, event.getBucketName(), "FAILED");
+                publishProcessedEvent(lessonId, event.getBucketName(), "FAILED", null);
                 return;
             }
 
-            // Step 4: Scan and upload all files from the local HLS folder to MinIO
+            // Step 5: Scan and upload all files from the local HLS folder to MinIO
             File[] hlsFiles = localHlsFolder.listFiles();
             if (hlsFiles != null && hlsFiles.length > 0) {
                 log.info("Found {} HLS files to upload.", hlsFiles.length);
@@ -129,29 +134,31 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
                                 .object(event.getObjectKey())
                                 .build()
                 );
-                publishProcessedEvent(lessonId, event.getBucketName(), "SUCCESS");
+                publishProcessedEvent(lessonId, event.getBucketName(), "SUCCESS", durationMillis);
             } else {
-                publishProcessedEvent(lessonId, event.getBucketName(), "FAILED");
+                publishProcessedEvent(lessonId, event.getBucketName(), "FAILED", null);
             }
 
         } catch (Exception e) {
             log.error("Error occurred while processing HLS video upload event", e);
-            publishProcessedEvent(lessonId, event.getBucketName(), "FAILED");
+            publishProcessedEvent(lessonId, event.getBucketName(), "FAILED", null);
         } finally {
-            // Step 5: Clean up temporary files and folder on host
+            // Step 6: Clean up temporary files and folder on host
             cleanupLocalFile(localInputFile);
             cleanupLocalDirectory(localHlsFolder);
         }
     }
 
-    private void publishProcessedEvent(String lessonId, String bucketName, String status) {
+    private void publishProcessedEvent(String lessonId, String bucketName, String status, Long durationMillis) {
         try {
             VideoProcessedEvent processedEvent = VideoProcessedEvent.builder()
                     .lessonId(lessonId)
                     .bucketName(bucketName)
                     .status(status)
+                    .durationMillis(durationMillis)
                     .build();
-            log.info("Publishing VideoProcessedEvent: lessonId={}, status={}", lessonId, status);
+            log.info("Publishing VideoProcessedEvent: lessonId={}, status={}, durationMillis={}",
+                    lessonId, status, durationMillis);
             eventPublisher.publish(Exchanges.MEDIA, RoutingKeys.VIDEO_PROCESSED, processedEvent);
         } catch (Exception e) {
             log.error("Failed to publish VideoProcessedEvent for lessonId={}", lessonId, e);

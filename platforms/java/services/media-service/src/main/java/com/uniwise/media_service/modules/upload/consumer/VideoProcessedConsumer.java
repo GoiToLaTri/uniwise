@@ -30,8 +30,10 @@ public class VideoProcessedConsumer {
         VideoProcessedEvent event = envelope.getPayload();
         String lessonId = event.getLessonId();
         String status = event.getStatus();
+        Long durationMillis = event.getDurationMillis();
 
-        log.info("Received VideoProcessedEvent: lessonId={}, status={}", lessonId, status);
+        log.info("Received VideoProcessedEvent: lessonId={}, status={}, durationMillis={}",
+                lessonId, status, durationMillis);
 
         if (isInvalidLessonId(lessonId)) {
             log.error("Invalid lessonId received in VideoProcessedEvent. Aborting process.");
@@ -40,12 +42,19 @@ public class VideoProcessedConsumer {
 
         if (!"SUCCESS".equalsIgnoreCase(status)) {
             log.warn("Video processing failed for lessonId={}. Relocation aborted. Publishing FAILED event.", lessonId);
-            publishTranscodedEvent(lessonId, null, null, "FAILED");
+            publishTranscodedEvent(lessonId, null, null, "FAILED", null);
+            return;
+        }
+
+        if (durationMillis == null || durationMillis <= 0) {
+            log.error("Video processing reported SUCCESS with invalid duration for lessonId={}: {}",
+                    lessonId, durationMillis);
+            publishTranscodedEvent(lessonId, null, null, "FAILED", null);
             return;
         }
 
         try {
-            relocateVideoFiles(lessonId);
+            relocateVideoFiles(lessonId, durationMillis);
         } catch (Exception e) {
             log.error("Failed to relocate transcoded files and notify course-service for lessonId={}", lessonId, e);
             // Rethrow Exception to notify RabbitMQ to retry
@@ -58,7 +67,7 @@ public class VideoProcessedConsumer {
         return lessonId == null || lessonId.trim().isEmpty();
     }
 
-    private void relocateVideoFiles(String lessonId) throws Exception {
+    private void relocateVideoFiles(String lessonId, Long durationMillis) throws Exception {
         String bucketName = minioProperties.getBucketName();
         String processedPrefix = "processed/" + lessonId + "/";
         String lessonPrefix = "lessons/" + lessonId + "/";
@@ -96,7 +105,7 @@ public class VideoProcessedConsumer {
         }
 
         log.info("Relocation completed for lessonId={}. Publishing VideoTranscodedEvent.", lessonId);
-        publishTranscodedEvent(lessonId, bucketName, lessonPrefix, "SUCCESS");
+        publishTranscodedEvent(lessonId, bucketName, lessonPrefix, "SUCCESS", durationMillis);
     }
 
     private void clearDestinationFolder(String bucketName, String lessonPrefix) throws Exception {
@@ -177,7 +186,12 @@ public class VideoProcessedConsumer {
         }
     }
 
-    private void publishTranscodedEvent(String lessonId, String bucketName, String lessonPrefix, String status) {
+    private void publishTranscodedEvent(
+            String lessonId,
+            String bucketName,
+            String lessonPrefix,
+            String status,
+            Long durationMillis) {
         String videoUrl = null;
         if ("SUCCESS".equalsIgnoreCase(status)) {
             String publicUrl = minioProperties.getPublicUrl();
@@ -188,9 +202,11 @@ public class VideoProcessedConsumer {
                 .lessonId(lessonId)
                 .videoUrl(videoUrl)
                 .status(status)
+                .durationMillis(durationMillis)
                 .build();
 
         eventPublisher.publish(Exchanges.MEDIA, RoutingKeys.VIDEO_TRANSCODED, transcodedEvent);
-        log.info("Published VideoTranscodedEvent for lessonId: {} with status: {} and URL: {}", lessonId, status, videoUrl);
+        log.info("Published VideoTranscodedEvent for lessonId={}, status={}, videoUrl={}, durationMillis={}",
+                lessonId, status, videoUrl, durationMillis);
     }
 }
