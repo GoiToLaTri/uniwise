@@ -1,7 +1,10 @@
 package com.uniwise.grpc_spring_boot_starter.server;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.SmartLifecycle;
@@ -36,8 +39,10 @@ public class GrpcServerRunner implements SmartLifecycle {
 
     private final ApplicationContext applicationContext; // Spring context để truy xuất các bean
     private final int port; // Port lắng nghe của gRPC server
+    private final Duration shutdownGracePeriod;
+    private final Executor executor;
     private Server server; // Instance của gRPC server
-    private boolean isRunning = false; // Trạng thái hoạt động của server
+    private volatile boolean isRunning = false; // Trạng thái hoạt động của server
 
     /**
      * Constructor của GrpcServerRunner.
@@ -46,8 +51,26 @@ public class GrpcServerRunner implements SmartLifecycle {
      * @param port               Port lắng nghe của gRPC server
      */
     public GrpcServerRunner(ApplicationContext applicationContext, int port) {
+        this(applicationContext, port, Duration.ofSeconds(30), null);
+    }
+
+    /**
+     * Constructor supporting an optional application executor managed by Spring.
+     *
+     * @param applicationContext  Spring context để truy xuất các bean
+     * @param port                Port lắng nghe của gRPC server
+     * @param shutdownGracePeriod Thời gian chờ các RPC đang xử lý hoàn tất
+     * @param executor            Executor cho callback gRPC; {@code null} giữ mặc định của gRPC
+     */
+    public GrpcServerRunner(
+            ApplicationContext applicationContext,
+            int port,
+            Duration shutdownGracePeriod,
+            Executor executor) {
         this.applicationContext = applicationContext;
         this.port = port;
+        this.shutdownGracePeriod = shutdownGracePeriod;
+        this.executor = executor;
     }
 
     /**
@@ -76,6 +99,11 @@ public class GrpcServerRunner implements SmartLifecycle {
         log.info("Starting gRPC Server on port: {}", port);
         ServerBuilder<?> serverBuilder = ServerBuilder.forPort(port);
 
+        if (executor != null) {
+            serverBuilder.executor(executor);
+            log.info("Configured gRPC Server with the Spring-managed executor.");
+        }
+
         // Thêm interceptors vào server builder
         applicationContext.getBeansOfType(ServerInterceptor.class).values().forEach(serverBuilder::intercept);
 
@@ -98,18 +126,25 @@ public class GrpcServerRunner implements SmartLifecycle {
             isRunning = true;
             log.info("gRPC Server started successfully.");
 
-            // Chạy một Thread daemon để tránh block main thread của Spring Boot
-            Thread awaitThread = new Thread(() -> {
+            Server startedServer = server;
+            // Preserve the existing process-liveness behavior without consuming the RPC executor.
+            Thread awaitThread = Thread.ofPlatform()
+                    .name("grpc-server-await-termination-" + port)
+                    .daemon(false)
+                    .unstarted(() -> {
                 try {
-                    server.awaitTermination();
+                    startedServer.awaitTermination();
                 } catch (InterruptedException e) {
-                    log.error("gRPC server awaited termination interrupted");
+                    Thread.currentThread().interrupt();
+                    log.warn("gRPC server await-termination thread was interrupted");
                 }
             });
-            awaitThread.setDaemon(false);
             awaitThread.start();
 
         } catch (IOException e) {
+            server.shutdownNow();
+            server = null;
+            isRunning = false;
             log.error("Failed to start gRPC server", e);
             throw new RuntimeException(e);
         }
@@ -123,12 +158,34 @@ public class GrpcServerRunner implements SmartLifecycle {
      */
     @Override
     public void stop() {
-        if (server != null) {
-            log.info("Shutting down gRPC server...");
-            server.shutdown();
+        Server serverToStop = server;
+        if (serverToStop == null) {
             isRunning = false;
-            log.info("gRPC server stopped.");
+            return;
         }
+
+        log.info("Shutting down gRPC server...");
+        serverToStop.shutdown();
+
+        try {
+            long gracePeriodMillis = Math.max(0L, shutdownGracePeriod.toMillis());
+            if (!serverToStop.awaitTermination(gracePeriodMillis, TimeUnit.MILLISECONDS)) {
+                log.warn("gRPC server did not stop within {}. Forcing shutdown.", shutdownGracePeriod);
+                serverToStop.shutdownNow();
+                if (!serverToStop.awaitTermination(gracePeriodMillis, TimeUnit.MILLISECONDS)) {
+                    log.warn("gRPC server still has active calls after forced shutdown.");
+                }
+            }
+        } catch (InterruptedException e) {
+            serverToStop.shutdownNow();
+            Thread.currentThread().interrupt();
+            log.warn("Interrupted while waiting for gRPC server shutdown.");
+        } finally {
+            server = null;
+            isRunning = false;
+        }
+
+        log.info("gRPC server stopped.");
     }
 
     /**

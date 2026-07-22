@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.uniwise</groupId>
 	<artifactId>grpc-spring-boot-starter</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.2</version>
 	<name>grpc-spring-boot-starter</name>
 	<description/>
 	<url/>
