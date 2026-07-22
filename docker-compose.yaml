@@ -89,9 +89,9 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8000
       - SPRING_CLOUD_DISCOVERY_ENABLED=false  # nếu dùng gateway mà ko cần discovery
-      - SPRING_THREADS_VIRTUAL_ENABLED=false
+      - SPRING_THREADS_VIRTUAL_ENABLED=true
       - SPRING_MAIN_KEEP_ALIVE=true
-      - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=false
+      - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=true
     networks:
       - uniwise
     restart: unless-stopped
@@ -108,9 +108,9 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8081
       - SPRING_CLOUD_DISCOVERY_ENABLED=false  # nếu dùng gateway mà ko cần discovery
-      - SPRING_THREADS_VIRTUAL_ENABLED=false
+      - SPRING_THREADS_VIRTUAL_ENABLED=true
       - SPRING_MAIN_KEEP_ALIVE=true
-      - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=false
+      - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=true
     networks:
       - uniwise
     restart: unless-stopped
@@ -130,9 +130,9 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8082
       - SPRING_CLOUD_DISCOVERY_ENABLED=false  # nếu dùng gateway mà ko cần discovery
-      - SPRING_THREADS_VIRTUAL_ENABLED=false
+      - SPRING_THREADS_VIRTUAL_ENABLED=true
       - SPRING_MAIN_KEEP_ALIVE=true
-      - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=false
+      - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=true
       - SPRING_TASK_SCHEDULING_SIMPLE_CONCURRENCY_LIMIT=1
     networks:
       - uniwise
@@ -155,7 +155,7 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8083
       - SPRING_CLOUD_DISCOVERY_ENABLED=false  # nếu dùng gateway mà ko cần discovery
-      - SPRING_THREADS_VIRTUAL_ENABLED=false
+      - SPRING_THREADS_VIRTUAL_ENABLED=true
       - SPRING_MAIN_KEEP_ALIVE=true
       - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=false
     networks:
@@ -177,7 +177,7 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8085
       - SPRING_CLOUD_DISCOVERY_ENABLED=false  # nếu dùng gateway mà ko cần discovery
-      - SPRING_THREADS_VIRTUAL_ENABLED=false
+      - SPRING_THREADS_VIRTUAL_ENABLED=true
       - SPRING_MAIN_KEEP_ALIVE=true
       - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=false
     networks:
@@ -199,7 +199,7 @@ services:
     # KHÔNG có ports - không expose ra ngoài host
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_THREADS_VIRTUAL_ENABLED=false
+      - SPRING_THREADS_VIRTUAL_ENABLED=true
       - SPRING_MAIN_KEEP_ALIVE=true
     volumes:
       - ./temp:/temp
@@ -223,7 +223,7 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SERVER_PORT=8086
-      - SPRING_THREADS_VIRTUAL_ENABLED=false
+      - SPRING_THREADS_VIRTUAL_ENABLED=true
       - SPRING_MAIN_KEEP_ALIVE=true
     networks:
       - uniwise
