@@ -120,7 +120,7 @@ public class HashtagServiceImpl implements HashtagService {
  
     // ===== DELETE =====
     @Override
-    @PreAuthorize("hashAuthority('hashtag:delete')")
+    @PreAuthorize("hasAuthority('hashtag:delete')")
     @Transactional(rollbackFor = Exception.class)
     public void delete(String id) {
         Hashtag hashtag = getEntityById(id);
@@ -130,7 +130,7 @@ public class HashtagServiceImpl implements HashtagService {
  
     // ===== TOGGLE VERIFIED =====
     @Override
-    @PreAuthorize("hashAuthority('hashtag:toggle-verified')")
+    @PreAuthorize("hasAuthority('hashtag:toggle-verified')")
     @Transactional(rollbackFor = Exception.class)
     public HashtagResponse toggleVerified(String id) {
         Hashtag hashtag = getEntityById(id);
