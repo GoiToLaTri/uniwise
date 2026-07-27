@@ -48,6 +48,12 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     }
 
     @Override
+    public RefreshToken getByHashForUpdate(String hash) {
+        return refreshTokenRepository.findByTokenHashForUpdate(hash)
+                .orElseThrow(() -> new HttpException(AuthError.TOKEN_INVALID));
+    }
+
+    @Override
     @Transactional
     public void markUsed(RefreshToken token) {
         token.setUsed(true);

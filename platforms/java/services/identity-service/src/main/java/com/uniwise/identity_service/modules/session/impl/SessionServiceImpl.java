@@ -1,5 +1,7 @@
 package com.uniwise.identity_service.modules.session.impl;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
 import com.uniwise.common.dto.response.SessionResponse;
@@ -8,6 +10,7 @@ import com.uniwise.identity_service.modules.session.entity.Session;
 import com.uniwise.identity_service.modules.session.mapper.SessionMapper;
 import com.uniwise.identity_service.modules.session.repository.SessionRepository;
 
+import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -29,6 +32,14 @@ public class SessionServiceImpl implements SessionService {
     @Override
     public SessionResponse update(Session session) {
         return sessionMapper.toResponse(sessionRepository.save(session));
+    }
+
+    @Override
+    @Transactional
+    public List<Session> revokeAllByAccountId(String accountId) {
+        List<Session> activeSessions = sessionRepository.findActiveByAccountIdForUpdate(accountId);
+        activeSessions.forEach(session -> session.setRevoked(true));
+        return sessionRepository.saveAll(activeSessions);
     }
 
     @Override

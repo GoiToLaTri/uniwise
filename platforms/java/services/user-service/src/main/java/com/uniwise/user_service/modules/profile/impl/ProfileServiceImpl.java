@@ -92,9 +92,14 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
+    @Transactional
     public ProfileResponse createProfile(ProfileCreateRequest request) {
-        String accountId = request.getAccountId() != null ? request.getAccountId() : getCurrentAccountId();
+        return createProfileForAccount(getCurrentAccountId(), request);
+    }
 
+    @Override
+    @Transactional
+    public ProfileResponse createProfileForAccount(String accountId, ProfileCreateRequest request) {
         if (profileRepository.existsByAccountId(accountId)) {
             throw new HttpException(ProfileError.PROFILE_ALREADY_EXISTS);
         }

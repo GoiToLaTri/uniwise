@@ -9,10 +9,13 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.uniwise.common.exception.HttpException;
+import com.uniwise.common.exception.errors.AuthError;
 import com.uniwise.common.exception.errors.CourseError;
 import com.uniwise.common.exception.errors.PaymentError;
 import com.uniwise.course.v1.CourseGrpcServiceGrpc.CourseGrpcServiceBlockingStub;
@@ -235,6 +238,20 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse getPaymentById(String paymentId) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new HttpException(PaymentError.PAYMENT_NOT_FOUND));
+        requireOwnerOrAdmin(payment.getAccountId());
         return paymentMapper.toResponse(payment);
+    }
+
+    private void requireOwnerOrAdmin(String ownerAccountId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated();
+        boolean isAdmin = isAuthenticated
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+        boolean isOwner = isAuthenticated
+                && ownerAccountId.equals(authentication.getName());
+
+        if (!isOwner && !isAdmin)
+            throw new HttpException(AuthError.ACCESS_DENIED);
     }
 }

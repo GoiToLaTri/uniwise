@@ -3,12 +3,14 @@ package com.uniwise.identity_service.modules.account.impl;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,14 +22,18 @@ import com.uniwise.common.dto.response.AccountResponse;
 import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.AccountError;
+import com.uniwise.common.exception.errors.AuthError;
 import com.uniwise.common.exception.errors.RoleError;
 import com.uniwise.grpc_spring_boot_starter.annotation.GrpcClient;
 import com.uniwise.identity_service.modules.account.AccountService;
 import com.uniwise.identity_service.modules.account.entity.Account;
 import com.uniwise.identity_service.modules.account.mapper.AccountMapper;
 import com.uniwise.identity_service.modules.account.repository.AccountRepository;
+import com.uniwise.identity_service.modules.redis.RedisService;
 import com.uniwise.identity_service.modules.role.RoleService;
 import com.uniwise.identity_service.modules.role.entity.Role;
+import com.uniwise.identity_service.modules.session.SessionService;
+import com.uniwise.identity_service.modules.session.entity.Session;
 import com.uniwise.user.profile.v1.CreateProfileRequest;
 import com.uniwise.user.profile.v1.CreateProfileResponse;
 import com.uniwise.user.profile.v1.ProfileServiceGrpc.ProfileServiceBlockingStub;
@@ -52,6 +58,8 @@ public class AccountServiceImpl implements AccountService {
     AccountMapper accountMapper;
     PasswordEncoder passwordEncoder;
     RoleService roleService;
+    SessionService sessionService;
+    RedisService redisService;
     String provider = "UNIWISE";
     Set<String> defaultRoles = Set.of("USER");
 
@@ -85,6 +93,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public AccountResponse getById(String id) {
+        requireOwnerOrAdmin(id);
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new HttpException(AccountError.ACCOUNT_NOT_FOUND));
         return accountMapper.toResponse(account);
@@ -131,6 +140,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public AccountResponse update(String id, AccountUpdateRequest request) {
+        requireOwnerOrAdmin(id);
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new HttpException(AccountError.ACCOUNT_NOT_FOUND));
 
@@ -151,6 +161,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public void delete(String id) {
+        requireOwnerOrAdmin(id);
         // TODO: Chặn Admin tự xóa chính mình
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new HttpException(AccountError.ACCOUNT_NOT_FOUND));
@@ -163,10 +174,26 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public void toggleActive(String id) {
         // TODO: Chặn Admin tự khóa tài khoản của chính mình
-        Account account = accountRepository.findById(id)
+        Account account = accountRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new HttpException(AccountError.ACCOUNT_NOT_FOUND));
-        account.setIsActive(!Boolean.TRUE.equals(account.getIsActive()));
+        boolean deactivating = Boolean.TRUE.equals(account.getIsActive());
+        account.setIsActive(!deactivating);
         accountRepository.save(account);
+
+        if (deactivating) {
+            List<Session> revokedSessions = sessionService.revokeAllByAccountId(id);
+            List<String> redisKeys = revokedSessions.stream()
+                    .flatMap(session -> Stream.of(
+                            "access:" + session.getToken(),
+                            "session:" + session.getId()))
+                    .toList();
+            redisService.deleteMultipleKey(redisKeys);
+
+            // TODO(socket-force-logout): Phát sự kiện qua socket để buộc tất cả client
+            // đang kết nối của Account này xóa credential và chuyển về màn hình đăng nhập.
+            log.info("Revoked {} active sessions for disabled account id: {}", revokedSessions.size(), id);
+        }
+
         log.info("Account active status toggled for id: {}", id);
     }
 
@@ -180,6 +207,19 @@ public class AccountServiceImpl implements AccountService {
     public Account getByEmail(String email) {
         return accountRepository.findByEmailAndProvider(email, provider)
                 .orElseThrow(() -> new HttpException(AccountError.ACCOUNT_NOT_FOUND));
+    }
+
+    private void requireOwnerOrAdmin(String accountId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated();
+        boolean isAdmin = isAuthenticated
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+        boolean isOwner = isAuthenticated
+                && accountId.equals(authentication.getName());
+
+        if (!isOwner && !isAdmin)
+            throw new HttpException(AuthError.ACCESS_DENIED);
     }
 
     @Override

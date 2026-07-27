@@ -10,6 +10,9 @@ public interface RefreshTokenService {
     // Lấy thông tin token dựa trên chuỗi băm (hash)
     RefreshToken getByHash(String hash);
 
+    // Khóa token trong transaction hiện tại để chỉ một request có thể xoay vòng.
+    RefreshToken getByHashForUpdate(String hash);
+
     // Đánh dấu token đã được sử dụng (khi thực hiện refresh thành công)
     void markUsed(RefreshToken token);
 

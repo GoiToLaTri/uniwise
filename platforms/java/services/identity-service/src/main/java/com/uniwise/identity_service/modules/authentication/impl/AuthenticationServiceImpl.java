@@ -59,6 +59,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 if (!passwordEncoder.matches(request.getPassword(), account.getPassword()))
                         throw new HttpException(AuthError.INVALID_CREDENTIALS);
 
+                // Only reveal the disabled state after the password has been verified.
+                if (!Boolean.TRUE.equals(account.getIsActive()))
+                        throw new HttpException(AuthError.ACCOUNT_DISABLED);
+
                 // 3. TỰ ĐỘNG lấy thông tin từ Request thông qua ServletUtils
                 // String userAgent = ServletUtils.getUserAgent();
                 String ipAddress = ServletUtils.getRemoteAddress();
@@ -164,60 +168,66 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         @Override
-        @Transactional
+        @Transactional(dontRollbackOn = HttpException.class)
         public TokenResponse refresh(RefreshTokenRequest request) {
-                // 1. Tìm Refresh Token qua Hash (RefreshTokenService xử lý hash bên trong hoặc
-                // gọi Util)
+                Instant now = Instant.now();
                 String hashedToken = TokenUtils.hash(request.getRefreshToken());
-                RefreshToken oldToken = refreshTokenService.getByHash(hashedToken);
+                // Serialize refresh attempts for the same token to prevent two concurrent
+                // requests from both rotating it successfully.
+                RefreshToken oldToken = refreshTokenService.getByHashForUpdate(hashedToken);
 
                 Session session = oldToken.getSession();
-                redisService.deleteKey("access:" + session.getToken());
-                // 2. Kiểm tra tính hợp lệ session qua Session logic
-                if (session.isRevoked() || session.getExpiresAt().isBefore(Instant.now()))
+                if (session == null)
                         throw new HttpException(AuthError.SESSION_NOT_FOUND);
 
-                // 3. Phát hiện sử dụng lại (Reuse Detection)
-                if (oldToken.isUsed()) {
-                        refreshTokenService.markCompromised(oldToken);
-                        // session.setRevoked(true);
-                        sessionService.update(session);
-                        // TODO: Logic hiện tại thu hồi 1 session khi phát hiện reuse, có thể nâng cấp
-                        // thành thu hồi toàn bộ các session của user nếu muốn tăng cường bảo mật
-                        // TODO: Dùng message queue gửi message cho người dùng
-                        // Ghi log chi tiết để phục vụ điều tra sau này
-                        log.error("Security alert: Token reuse detected! Session: {}", session.getId());
+                // A compromised token or a previously consumed token invalidates its session.
+                if (oldToken.isCompromised() || oldToken.isUsed()) {
+                        compromiseSession(oldToken, session);
+                        log.error("Security alert: Refresh token reuse detected. Session: {}", session.getId());
                         throw new HttpException(AuthError.TOKEN_COMPROMISED);
                 }
 
-                // 4. Đánh dấu đã sử dụng thông qua Service
+                if (oldToken.getExpiryDate() == null || !oldToken.getExpiryDate().isAfter(now))
+                        throw new HttpException(AuthError.TOKEN_EXPIRED);
+
+                if (session.isRevoked()
+                                || session.getExpiresAt() == null
+                                || !session.getExpiresAt().isAfter(now))
+                        throw new HttpException(AuthError.SESSION_NOT_FOUND);
+
+                // All validation has passed; invalidate the old access token and consume the
+                // refresh token exactly once.
+                redisService.deleteKey("access:" + session.getToken());
                 refreshTokenService.markUsed(oldToken);
 
-                // 5. Xoay vòng Token (Rotation)
                 String accessToken = TokenUtils.generateRandomToken().replaceAll("-", "");
                 String newRawToken = TokenUtils.generateRandomToken().replaceAll("-", "");
                 RefreshToken newToken = refreshTokenService.create(session, newRawToken);
                 String scope = buildScope(session.getAccount());
-                // Lưu thông tin token mới vào Redis để phục vụ xác thực sau này
+                Instant accessTokenExpiresAt = now.plus(15, ChronoUnit.MINUTES);
+
                 RedisToken redisToken = RedisToken.builder()
                                 .sessionId(session.getId())
                                 .accountId(session.getAccount().getId())
-                                .expiresAt(Instant.now().plus(15, ChronoUnit.MINUTES).toEpochMilli())
+                                .expiresAt(accessTokenExpiresAt.toEpochMilli())
                                 .scope(scope)
                                 .build();
 
-                Instant accessTokenExpiresAt = Instant.now().plus(15, ChronoUnit.MINUTES);
                 Duration duration = Duration.between(Instant.now(), accessTokenExpiresAt);
 
-                // 6. Cập nhật Session metadata
                 session.setToken(TokenUtils.hash(accessToken));
                 session.setRefreshTokenId(newToken.getId());
-                session.setLastActivity(Instant.now());
-                sessionService.update(session);
+                session.setLastActivity(now);
                 session.setAccessTokenExpiresAt(accessTokenExpiresAt);
+                sessionService.update(session);
 
                 redisService.setKey("access:" + TokenUtils.hash(accessToken), redisToken,
                                 duration.toMillis(), TimeUnit.MILLISECONDS);
+
+                SessionResponse sessionResponse = sessionMapper.toResponse(session);
+                Duration sessionDuration = Duration.between(Instant.now(), session.getExpiresAt());
+                redisService.setKey("session:" + session.getId(), sessionResponse,
+                                sessionDuration.toMillis(), TimeUnit.MILLISECONDS);
 
                 return TokenResponse.builder()
                                 .accessToken(accessToken)
@@ -226,6 +236,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                 .expiresAt(session.getAccessTokenExpiresAt())
                                 .scope(scope)
                                 .build();
+        }
+
+        private void compromiseSession(RefreshToken token, Session session) {
+                refreshTokenService.markCompromised(token);
+                session.setRevoked(true);
+                sessionService.update(session);
+                redisService.deleteKey("access:" + session.getToken());
+                redisService.deleteKey("session:" + session.getId());
         }
 
         private String buildScope(Account account) {

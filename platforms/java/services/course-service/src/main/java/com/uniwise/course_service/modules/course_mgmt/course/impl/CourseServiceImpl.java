@@ -1,6 +1,7 @@
 package com.uniwise.course_service.modules.course_mgmt.course.impl;
 
 import java.util.Optional;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ import com.uniwise.common.dto.response.CourseResponse;
 import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.enums.ECourseStatus;
 import com.uniwise.common.exception.HttpException;
+import com.uniwise.common.exception.errors.AuthError;
 import com.uniwise.common.exception.errors.CourseError;
 import com.uniwise.course_service.modules.course_mgmt.course.CourseService;
 import com.uniwise.course_service.modules.course_mgmt.course.entity.Course;
@@ -265,15 +267,12 @@ public class CourseServiceImpl implements CourseService {
 
     // ===== UPDATE =====
     @Override
-    @PreAuthorize("hasAuthority('course:update')")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('course:update')")
     @Transactional(rollbackFor = Exception.class)
     public CourseResponse update(String publicId, CourseUpdateRequest request) {
         log.info("Updating course with publicId: {}", publicId);
         Course course = getEntityByPublicId(publicId);
-
-        // Optional: Check if updater is the creator (or is admin)
-        // String currentAccountId = getCurrentAccountId();
-        // if (!course.getCreatorId().equals(currentAccountId)) { ... }
+        requireCreatorOrAdmin(course);
 
         // Update PriceTier if provided
         if (request.getPriceTierId() != null) {
@@ -307,11 +306,12 @@ public class CourseServiceImpl implements CourseService {
 
     // ===== DELETE (SOFT DELETE) =====
     @Override
-    @PreAuthorize("hasAuthority('course:delete')")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('course:delete')")
     @Transactional(rollbackFor = Exception.class)
     public void delete(String publicId) {
         log.info("Soft deleting course with publicId: {}", publicId);
         Course course = getEntityByPublicId(publicId);
+        requireCreatorOrAdmin(course);
         course.setIsActive(false);
         courseRepository.save(course);
         log.info("Course soft deleted successfully with publicId: {}", publicId);
@@ -388,5 +388,19 @@ public class CourseServiceImpl implements CourseService {
         return Optional.ofNullable(context.getAuthentication())
                 .map(authentication -> authentication.getName())
                 .orElse("");
+    }
+
+    private void requireCreatorOrAdmin(Course course) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated();
+        boolean isAdmin = isAuthenticated
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority())
+                                || "admin:all".equals(authority.getAuthority()));
+        boolean isCreator = isAuthenticated
+                && Objects.equals(course.getCreatorId(), authentication.getName());
+
+        if (!isCreator && !isAdmin)
+            throw new HttpException(AuthError.ACCESS_DENIED);
     }
 }

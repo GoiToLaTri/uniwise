@@ -26,9 +26,9 @@ public class ProfileGrpcServiceImpl implements ProfileGrpcService {
     public CreateProfileResponse create(CreateProfileRequest request) {
         log.info("Processing business logic for creating profile: {}", request.getName());
 
-        ProfileResponse profile = profileService.createProfile(
+        ProfileResponse profile = profileService.createProfileForAccount(
+                request.getAccountId(),
                 ProfileCreateRequest.builder()
-                        .accountId(request.getAccountId())
                         .email(request.getEmail())
                         .name(request.getName())
                         .build()

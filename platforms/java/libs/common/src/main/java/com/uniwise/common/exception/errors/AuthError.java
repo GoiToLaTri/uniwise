@@ -36,6 +36,11 @@ public enum AuthError implements ErrorDefinition {
         ACCESS_DENIED(
                         "AUTH_006",
                         "Access denied: You do not have permission to access this resource",
+                        HttpStatus.FORBIDDEN),
+
+        ACCOUNT_DISABLED(
+                        "AUTH_007",
+                        "Account has been disabled",
                         HttpStatus.FORBIDDEN);
         ;
 
