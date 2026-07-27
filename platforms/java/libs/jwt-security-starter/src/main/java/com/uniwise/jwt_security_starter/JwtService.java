@@ -11,7 +11,9 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.UnsupportedJwtException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -40,7 +42,15 @@ public class JwtService {
     }
 
     private Claims verify(String token, PublicKey key) {
-        return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+        Jws<Claims> signedClaims = Jwts.parser()
+                .verifyWith(key)
+                .requireIssuer(jwtProperties.getIssuer())
+                .requireAudience(jwtProperties.getAudience())
+                .build()
+                .parseSignedClaims(token);
+        if (!Jwts.SIG.RS256.getId().equals(signedClaims.getHeader().getAlgorithm()))
+            throw new UnsupportedJwtException("Gateway JWT must use RS256");
+        return signedClaims.getPayload();
     }   
 
     private PublicKey loadPublicKeyFromStream(InputStream inputStream) throws Exception {

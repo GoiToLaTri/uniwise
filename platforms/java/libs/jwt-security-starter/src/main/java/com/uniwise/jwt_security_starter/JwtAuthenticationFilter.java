@@ -61,18 +61,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private String extractToken(HttpServletRequest request) {
-        // Cách 1: Lấy từ header (mặc định)
         String token = request.getHeader(jwtProperties.getTokenHeader());
-        // Cách 2: Cho phép lấy từ Authorization header (Bearer token)
-        if (token == null || token.isEmpty()) {
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer "))
-                token = authHeader.substring(7);
-            else
-                token = null; // Không tìm thấy token hợp lệ
-        }
-
-        return token;
+        return token == null || token.isBlank() ? null : token;
     }
 
     private List<SimpleGrantedAuthority> parseScopes(String scopes) {
