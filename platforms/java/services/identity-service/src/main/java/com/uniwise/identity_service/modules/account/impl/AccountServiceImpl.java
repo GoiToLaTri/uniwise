@@ -23,15 +23,13 @@ import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.AccountError;
 import com.uniwise.common.exception.errors.AuthError;
-import com.uniwise.common.exception.errors.RoleError;
 import com.uniwise.grpc_spring_boot_starter.annotation.GrpcClient;
+import com.uniwise.identity_service.modules.account.AccountRoleManager;
 import com.uniwise.identity_service.modules.account.AccountService;
 import com.uniwise.identity_service.modules.account.entity.Account;
 import com.uniwise.identity_service.modules.account.mapper.AccountMapper;
 import com.uniwise.identity_service.modules.account.repository.AccountRepository;
 import com.uniwise.identity_service.modules.redis.RedisService;
-import com.uniwise.identity_service.modules.role.RoleService;
-import com.uniwise.identity_service.modules.role.entity.Role;
 import com.uniwise.identity_service.modules.session.SessionService;
 import com.uniwise.identity_service.modules.session.entity.Session;
 import com.uniwise.user.profile.v1.CreateProfileRequest;
@@ -57,7 +55,7 @@ public class AccountServiceImpl implements AccountService {
     AccountRepository accountRepository;
     AccountMapper accountMapper;
     PasswordEncoder passwordEncoder;
-    RoleService roleService;
+    AccountRoleManager accountRoleManager;
     SessionService sessionService;
     RedisService redisService;
     String provider = "UNIWISE";
@@ -76,7 +74,7 @@ public class AccountServiceImpl implements AccountService {
         // throw new HttpException(AccountError.DEFAULT_ROLES_NOT_FOUND);
         // account.setRoles(roles);
         Account saved = accountRepository.save(account);
-        assignRoles(saved.getId(), defaultRoles);
+        accountRoleManager.assignRoles(saved.getId(), defaultRoles);
 
         CreateProfileRequest profileRequest = CreateProfileRequest.newBuilder()
                 .setAccountId(saved.getId())
@@ -204,6 +202,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @Transactional
     public Account getByEmail(String email) {
         return accountRepository.findByEmailAndProvider(email, provider)
                 .orElseThrow(() -> new HttpException(AccountError.ACCOUNT_NOT_FOUND));
@@ -226,41 +225,17 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public AccountResponse assignRoles(String id, Set<String> roleNames) {
-        Account account = getEntityById(id);
         // TODO: Thêm logic kiểm tra an toàn bảo mật (VD: Chỉ Super Admin mới được phép
         // cấp quyền ADMIN cho người khác)
-        Set<Role> rolesToAdd = roleService.getByNames(roleNames);
-        // TODO: roles not found error info
-        if (rolesToAdd.isEmpty())
-            throw new HttpException(RoleError.ROLE_NOT_FOUND);
-        account.getRoles().addAll(rolesToAdd);
-        // Increment user count for each role assigned
-        rolesToAdd.forEach(role -> {
-            role.setUserCount(role.getUserCount() + 1);
-        });
-        Account updated = accountRepository.save(account);
-        log.info("Roles {} assigned to account with id: {}", roleNames, id);
-        return accountMapper.toResponse(updated);
+        return accountRoleManager.assignRoles(id, roleNames);
     }
 
     @Override
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public AccountResponse revokeRoles(String id, Set<String> roleNames) {
-        Account account = getEntityById(id);
         // TODO: Thêm logic kiểm tra an toàn bảo mật (VD: Không cho phép Admin tự thu
         // hồi quyền ADMIN của chính mình)
-        Set<Role> rolesToRemove = roleService.getByNames(roleNames);
-        // TODO: roles not found error info
-        if (rolesToRemove.isEmpty())
-            throw new HttpException(RoleError.ROLE_NOT_FOUND);
-        account.getRoles().removeIf(role -> roleNames.contains(role.getName()));
-        // Decrement user count for each role revoked
-        rolesToRemove.forEach(role -> {
-            role.setUserCount(Math.max(0, role.getUserCount() - 1));
-        });
-        Account updated = accountRepository.save(account);
-        log.info("Roles {} revoked from account with id: {}", roleNames, id);
-        return accountMapper.toResponse(updated);
+        return accountRoleManager.revokeRoles(id, roleNames);
     }
 }

@@ -127,15 +127,31 @@ public class RoleServiceImpl implements RoleService {
         if (permissionsToAdd.size() != permissionNames.size())
             throw new HttpException(RoleError.SOME_PERMISSIONS_NOT_FOUND);
 
-        // Xóa hết permissions cũ một cách an toàn trên copy
-        Set<Permission> currentPermissions = new HashSet<>(role.getPermissions());
-        role.getPermissions().removeAll(currentPermissions);
-        
-        // Thêm permissions mới
+        role.getPermissions().clear();
         role.getPermissions().addAll(permissionsToAdd);
+        Role updated = roleRepository.save(role);
+        log.info("Permissions assigned to role with id: {}", updated.getId());
+        return roleMapper.toResponse(updated);
+    }
 
-        log.info("Permissions assigned to role with id: {}", role.getId());
-        return roleMapper.toResponse(role);
+    @Override
+    @Transactional
+    public RoleResponse ensurePermissions(Long id, Set<String> permissionNames) {
+        Role role = roleRepository.findById(id)
+                .orElseThrow(() -> new HttpException(RoleError.ROLE_NOT_FOUND));
+
+        Set<Permission> permissionsToEnsure = permissionService.getByNames(permissionNames);
+        if (permissionsToEnsure.size() != permissionNames.size())
+            throw new HttpException(RoleError.SOME_PERMISSIONS_NOT_FOUND);
+
+        Set<Permission> mergedPermissions = new HashSet<>(role.getPermissions());
+        mergedPermissions.addAll(permissionsToEnsure);
+        role.getPermissions().clear();
+        role.getPermissions().addAll(mergedPermissions);
+
+        Role updated = roleRepository.save(role);
+        log.info("Default permissions ensured for role with id: {}", updated.getId());
+        return roleMapper.toResponse(updated);
     }
 
     @Override

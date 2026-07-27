@@ -22,6 +22,8 @@ public interface RoleService {
 
     RoleResponse assignPermissions(Long id, Set<String> permissionNames);
 
+    RoleResponse ensurePermissions(Long id, Set<String> permissionNames);
+
     RoleResponse revokePermissions(Long id, Set<String> permissionNames);
 
     void delete(Long id);
