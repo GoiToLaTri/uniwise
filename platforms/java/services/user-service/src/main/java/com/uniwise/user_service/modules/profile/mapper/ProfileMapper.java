@@ -10,6 +10,7 @@ import org.mapstruct.ReportingPolicy;
 import com.uniwise.common.dto.request.ProfileCreateRequest;
 import com.uniwise.common.dto.request.ProfileUpdateRequest;
 import com.uniwise.common.dto.response.ProfileResponse;
+import com.uniwise.common.dto.response.PublicProfileResponse;
 import com.uniwise.user_service.modules.profile.entity.Profile;
 
 @Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE, unmappedTargetPolicy = ReportingPolicy.IGNORE)
@@ -26,4 +27,7 @@ public interface ProfileMapper {
 
     @Mapping(target = "profileType", source = "profileType")
     ProfileResponse toResponse(Profile profile);
+
+    @Mapping(target = "profileType", source = "profileType")
+    PublicProfileResponse toPublicResponse(Profile profile);
 }

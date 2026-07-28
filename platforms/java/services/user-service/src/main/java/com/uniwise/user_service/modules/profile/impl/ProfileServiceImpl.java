@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import com.uniwise.common.dto.request.ProfileCreateRequest;
 import com.uniwise.common.dto.request.ProfileUpdateRequest;
 import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.dto.response.ProfileResponse;
+import com.uniwise.common.dto.response.PublicProfileResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.ProfileError;
 import com.uniwise.user_service.modules.profile.ProfileService;
@@ -50,7 +52,7 @@ public class ProfileServiceImpl implements ProfileService {
     // TODO: Method này sẽ được thay thế bằng elasticsearch hoặc search engine khác
     // trong tương lai để có hiệu năng tốt hơn
     @Override
-    // @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
     public PageResponse<ProfileResponse> getAllProfiles(int page, int size, String keyword,
             ProfileType profileType,
@@ -76,18 +78,19 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
-    public ProfileResponse getProfileByPublicId(String publicId) {
+    @Transactional(readOnly = true)
+    public PublicProfileResponse getProfileByPublicId(String publicId) {
         return profileRepository.findByPublicId(publicId)
-                .map(profileMapper::toResponse)
+                .map(profileMapper::toPublicResponse)
                 .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
     }
 
     @Override
-    // @PreAuthorize("hasAuthority('profile:get-by-account-id')")
+    @PreAuthorize("hasAuthority('profile:get-by-account-id')")
     @Transactional(readOnly = true)
-    public ProfileResponse getProfileByAccountId(String accountId) {
+    public PublicProfileResponse getProfileByAccountId(String accountId) {
         return profileRepository.findByAccountId(accountId)
-                .map(profileMapper::toResponse)
+                .map(profileMapper::toPublicResponse)
                 .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
     }
 

@@ -17,6 +17,7 @@ import com.uniwise.common.dto.request.ProfileUpdateRequest;
 import com.uniwise.common.dto.response.ApiResponse;
 import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.dto.response.ProfileResponse;
+import com.uniwise.common.dto.response.PublicProfileResponse;
 import com.uniwise.user_service.modules.profile.enums.ProfileType;
 
 import lombok.AccessLevel;
@@ -57,8 +58,8 @@ public class ProfileController {
     }
 
     @GetMapping("/by-account-id/{accountId}")
-    public ApiResponse<ProfileResponse> getProfileByAccountId(@PathVariable String accountId) {
-        return ApiResponse.<ProfileResponse>builder()
+    public ApiResponse<PublicProfileResponse> getProfileByAccountId(@PathVariable String accountId) {
+        return ApiResponse.<PublicProfileResponse>builder()
                 .code("OK")
                 .data(profileService.getProfileByAccountId(accountId))
                 .message("Get profile by accountId success")
@@ -66,8 +67,8 @@ public class ProfileController {
     }
 
     @GetMapping("/public/{publicId}")
-    public ApiResponse<ProfileResponse> getProfileByPublicId(@PathVariable String publicId) {
-        return ApiResponse.<ProfileResponse>builder()
+    public ApiResponse<PublicProfileResponse> getProfileByPublicId(@PathVariable String publicId) {
+        return ApiResponse.<PublicProfileResponse>builder()
                 .code("OK")
                 .data(profileService.getProfileByPublicId(publicId))
                 .message("Get profile by publicId success")

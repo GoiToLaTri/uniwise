@@ -1,7 +1,11 @@
 package com.uniwise.course_service.modules.course_mgmt.course.grpc;
 
+import java.util.Objects;
+
 import org.springframework.transaction.annotation.Transactional;
 
+import com.uniwise.course.v1.CheckLessonUploadAuthorizationRequest;
+import com.uniwise.course.v1.CheckLessonUploadAuthorizationResponse;
 import com.uniwise.course.v1.CourseGrpcServiceGrpc.CourseGrpcServiceImplBase;
 import com.uniwise.course.v1.GetCoursePriceRequest;
 import com.uniwise.course.v1.GetCoursePriceResponse;
@@ -109,6 +113,47 @@ public class CourseGrpcController extends CourseGrpcServiceImplBase {
             responseObserver.onCompleted();
         } catch (Exception e) {
             log.error("gRPC Error: Failed to check lesson access", e);
+            responseObserver.onError(Status.INTERNAL
+                    .withDescription("Internal server error")
+                    .withCause(e)
+                    .asRuntimeException());
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void checkLessonUploadAuthorization(
+            CheckLessonUploadAuthorizationRequest request,
+            StreamObserver<CheckLessonUploadAuthorizationResponse> responseObserver) {
+        try {
+            log.info("gRPC: Checking upload authorization for account {} and lesson {}",
+                    request.getAccountId(), request.getLessonId());
+
+            Lesson lesson;
+            try {
+                lesson = lessonService.getEntityByPublicId(request.getLessonId());
+            } catch (HttpException e) {
+                log.warn("gRPC: Upload target lesson not found with public ID: {}", request.getLessonId());
+                responseObserver.onNext(CheckLessonUploadAuthorizationResponse.newBuilder()
+                        .setLessonExists(false)
+                        .build());
+                responseObserver.onCompleted();
+                return;
+            }
+
+            boolean isOwner = Objects.equals(
+                    lesson.getSection().getCourse().getCreatorId(),
+                    request.getAccountId());
+            boolean isVideoLesson = lesson.getLessonType() == Lesson.LessonType.VIDEO;
+
+            responseObserver.onNext(CheckLessonUploadAuthorizationResponse.newBuilder()
+                    .setLessonExists(true)
+                    .setIsOwner(isOwner)
+                    .setIsVideoLesson(isVideoLesson)
+                    .build());
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            log.error("gRPC: Unexpected system error while checking lesson upload authorization", e);
             responseObserver.onError(Status.INTERNAL
                     .withDescription("Internal server error")
                     .withCause(e)
