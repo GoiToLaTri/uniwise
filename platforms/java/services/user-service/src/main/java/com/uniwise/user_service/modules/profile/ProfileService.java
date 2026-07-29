@@ -5,6 +5,7 @@ import com.uniwise.common.dto.request.ProfileUpdateRequest;
 import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.dto.response.ProfileResponse;
 import com.uniwise.common.dto.response.PublicProfileResponse;
+import com.uniwise.user_service.modules.profile.entity.Profile;
 import com.uniwise.user_service.modules.profile.enums.ProfileType;
 
 public interface ProfileService {
@@ -19,6 +20,8 @@ public interface ProfileService {
     PublicProfileResponse getProfileByAccountId(String accountId);
 
     PublicProfileResponse getPublicProfileForInternalUse(String accountId);
+
+    Profile getProfileEntityForInternalUse(String accountId);
 
     ProfileResponse createProfile(ProfileCreateRequest request);
 

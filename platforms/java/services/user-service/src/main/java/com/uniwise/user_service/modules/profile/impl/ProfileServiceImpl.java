@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +30,7 @@ import com.uniwise.platform_event_starter.publisher.EventPublisher;
 import com.uniwise.user_service.modules.profile.ProfileService;
 import com.uniwise.user_service.modules.profile.entity.Profile;
 import com.uniwise.user_service.modules.profile.enums.ProfileType;
+import com.uniwise.user_service.modules.profile.event.ProfilePublicInfoChangedEvent;
 import com.uniwise.user_service.modules.profile.mapper.ProfileMapper;
 import com.uniwise.user_service.modules.profile.repository.ProfileRepository;
 
@@ -45,6 +47,7 @@ public class ProfileServiceImpl implements ProfileService {
     ProfileRepository profileRepository;
     ProfileMapper profileMapper;
     EventPublisher eventPublisher;
+    ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     public ProfileResponse getProfile() {
@@ -104,6 +107,13 @@ public class ProfileServiceImpl implements ProfileService {
     public PublicProfileResponse getPublicProfileForInternalUse(String accountId) {
         return profileRepository.findByAccountId(accountId)
                 .map(profileMapper::toPublicResponse)
+                .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Profile getProfileEntityForInternalUse(String accountId) {
+        return profileRepository.findByAccountId(accountId)
                 .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
     }
 
@@ -179,6 +189,8 @@ public class ProfileServiceImpl implements ProfileService {
                     .name(saved.getName())
                     .avatarUrl(saved.getAvatarUrl())
                     .build());
+
+            applicationEventPublisher.publishEvent(new ProfilePublicInfoChangedEvent(saved.getAccountId()));
         }
 
         return profileMapper.toResponse(saved);

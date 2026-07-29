@@ -1,0 +1,47 @@
+{
+  "analysis": {
+    "filter": {
+      "instructor_autocomplete_filter": {
+        "type": "edge_ngram",
+        "min_gram": 2,
+        "max_gram": 20
+      }
+    },
+    "analyzer": {
+      "instructor_text": {
+        "type": "custom",
+        "tokenizer": "standard",
+        "filter": [
+          "lowercase",
+          "asciifolding"
+        ]
+      },
+      "instructor_autocomplete": {
+        "type": "custom",
+        "tokenizer": "standard",
+        "filter": [
+          "lowercase",
+          "asciifolding",
+          "instructor_autocomplete_filter"
+        ]
+      },
+      "instructor_search": {
+        "type": "custom",
+        "tokenizer": "standard",
+        "filter": [
+          "lowercase",
+          "asciifolding"
+        ]
+      }
+    },
+    "normalizer": {
+      "instructor_keyword_normalizer": {
+        "type": "custom",
+        "filter": [
+          "lowercase",
+          "asciifolding"
+        ]
+      }
+    }
+  }
+}

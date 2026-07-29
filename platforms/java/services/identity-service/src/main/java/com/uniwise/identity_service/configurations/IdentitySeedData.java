@@ -38,6 +38,7 @@ final class IdentitySeedData {
             permission("hashtag:delete", "Delete a hashtag"),
             permission("hashtag:toggle-verified", "Toggle hashtag verification"),
             permission("search:all-course", "Search all courses"),
+            permission("search:all-instructor", "Search all instructor profiles"),
             permission("search:creator-course", "Search courses by creator"));
 
     static final Set<String> ALL_PERMISSION_NAMES = DEFAULT_PERMISSIONS.stream()

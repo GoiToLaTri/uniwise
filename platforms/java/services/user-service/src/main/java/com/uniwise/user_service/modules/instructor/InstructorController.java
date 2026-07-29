@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,6 +20,7 @@ import com.uniwise.common.dto.request.InstructorReviewRequest;
 import com.uniwise.common.dto.response.ApiResponse;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
 import com.uniwise.common.dto.response.PageResponse;
+import com.uniwise.common.dto.response.PublicInstructorSearchResponse;
 import com.uniwise.user_service.modules.instructor.enums.EInstructorProfileStatus;
 
 import lombok.AccessLevel;
@@ -54,7 +54,7 @@ public class InstructorController {
                 .build();
     }
 
-    @PutMapping("/me")
+    @PatchMapping("/me")
     public ApiResponse<InstructorProfileResponse> updateMyInstructorProfile(
             @RequestBody @Valid InstructorProfileUpdateRequest request) {
         return ApiResponse.<InstructorProfileResponse>builder()
@@ -73,12 +73,12 @@ public class InstructorController {
                 .build();
     }
 
-    @GetMapping("/public/{profileId}")
-    public ApiResponse<InstructorProfileResponse> getInstructorProfileByProfileId(@PathVariable String profileId) {
-        return ApiResponse.<InstructorProfileResponse>builder()
+    @GetMapping("/public/{publicId}")
+    public ApiResponse<PublicInstructorSearchResponse> getPublicInstructorProfile(@PathVariable String publicId) {
+        return ApiResponse.<PublicInstructorSearchResponse>builder()
                 .code("OK")
-                .data(instructorService.getInstructorProfileByProfileId(profileId))
-                .message("Get instructor profile by profileId success")
+                .data(instructorService.getPublicInstructorProfile(publicId))
+                .message("Get public instructor profile success")
                 .build();
     }
 

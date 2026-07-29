@@ -13,6 +13,7 @@ public final class RoutingKeys {
     public static final String USER_CREATED = "user.created";
     public static final String USER_UPDATED = "user.updated";
     public static final String PROFILE_UPDATED = "profile.updated";
+    public static final String INSTRUCTOR_SEARCH_UPSERTED = "instructor.search.upserted";
 
     // Payment routing keys
     public static final String PAYMENT_COMPLETED = "payment.completed";

@@ -23,9 +23,9 @@ import com.uniwise.common.dto.response.DegreeDto;
 import com.uniwise.common.dto.response.ExpertiseDto;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
 import com.uniwise.common.dto.response.PageResponse;
+import com.uniwise.common.dto.response.PublicInstructorSearchResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.InstructorError;
-import com.uniwise.common.exception.errors.ProfileError;
 import com.uniwise.grpc_spring_boot_starter.annotation.GrpcClient;
 import com.uniwise.identity.account.v1.AccountServiceGrpc.AccountServiceBlockingStub;
 import com.uniwise.identity.account.v1.AssignRolesRequest;
@@ -35,11 +35,11 @@ import com.uniwise.user_service.modules.instructor.entity.DegreeCertificate;
 import com.uniwise.user_service.modules.instructor.entity.Expertise;
 import com.uniwise.user_service.modules.instructor.entity.InstructorProfile;
 import com.uniwise.user_service.modules.instructor.enums.EInstructorProfileStatus;
+import com.uniwise.user_service.modules.instructor.event.InstructorSearchEventPublisher;
 import com.uniwise.user_service.modules.instructor.mapper.InstructorMapper;
 import com.uniwise.user_service.modules.instructor.repository.InstructorProfileRepository;
 import com.uniwise.user_service.modules.profile.ProfileService;
 import com.uniwise.user_service.modules.profile.entity.Profile;
-import com.uniwise.user_service.modules.profile.repository.ProfileRepository;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -55,7 +55,7 @@ public class InstructorServiceImpl implements InstructorService {
     InstructorProfileRepository instructorProfileRepository;
     InstructorMapper instructorMapper;
     ProfileService profileService;
-    ProfileRepository profileRepository;
+    InstructorSearchEventPublisher instructorSearchEventPublisher;
 
     @NonFinal
     @GrpcClient("identity-service")
@@ -63,6 +63,7 @@ public class InstructorServiceImpl implements InstructorService {
 
     @Override
     @PreAuthorize("hasAuthority('instructor:apply')")
+    @Transactional
     public InstructorProfileResponse applyInstructorProfile(InstructorProfileCreateRequest request) {
         String accountId = getCurrentAccountId();
 
@@ -70,8 +71,7 @@ public class InstructorServiceImpl implements InstructorService {
             throw new HttpException(InstructorError.INSTRUCTOR_PROFILE_ALREADY_EXISTS);
         }
 
-        Profile profile = profileRepository.findByAccountId(accountId)
-                .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
+        Profile profile = profileService.getProfileEntityForInternalUse(accountId);
 
         InstructorProfile instructorProfile = instructorMapper.toEntity(request);
         instructorProfile.setProfile(profile);
@@ -80,7 +80,9 @@ public class InstructorServiceImpl implements InstructorService {
         instructorProfile.setAppliedAt(LocalDateTime.now());
 
         assignChildEntities(instructorProfile);
-        return instructorMapper.toResponse(instructorProfileRepository.save(instructorProfile));
+        InstructorProfile saved = instructorProfileRepository.saveAndFlush(instructorProfile);
+        instructorSearchEventPublisher.publish(saved);
+        return instructorMapper.toResponse(saved);
     }
 
     @Override
@@ -111,7 +113,9 @@ public class InstructorServiceImpl implements InstructorService {
 
         instructorProfile.setStatus(EInstructorProfileStatus.PENDING);
 
-        return instructorMapper.toResponse(instructorProfileRepository.save(instructorProfile));
+        InstructorProfile saved = instructorProfileRepository.saveAndFlush(instructorProfile);
+        instructorSearchEventPublisher.publish(saved);
+        return instructorMapper.toResponse(saved);
     }
 
     @Override
@@ -125,19 +129,16 @@ public class InstructorServiceImpl implements InstructorService {
 
     @Override
     @Transactional(readOnly = true)
-    public InstructorProfileResponse getInstructorProfileByProfileId(String profileId) {
-        InstructorProfile instructorProfile = instructorProfileRepository.findByProfileId(profileId)
+    public PublicInstructorSearchResponse getPublicInstructorProfile(String publicId) {
+        return instructorProfileRepository
+                .findByProfilePublicIdAndStatus(publicId, EInstructorProfileStatus.APPROVED)
+                .map(instructorMapper::toPublicSearchResponse)
                 .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));
-
-        if (instructorProfile.getStatus() != EInstructorProfileStatus.APPROVED) {
-            throw new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_APPROVED);
-        }
-
-        return instructorMapper.toResponse(instructorProfile);
     }
 
     @Override
     @PreAuthorize("hasAuthority('instructor:approve')")
+    @Transactional
     public InstructorProfileResponse approveInstructorProfile(String publicId, String reviewComment) {
         InstructorProfile instructorProfile = instructorProfileRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));
@@ -169,11 +170,14 @@ public class InstructorServiceImpl implements InstructorService {
         // Response có thể dùng nếu cần kiểm tra trạng thái hoặc log
         log.info("Assigned role INSTRUCTOR to account {} via identity-service grpc", instructorProfile.getProfile().getAccountId());
 
-        return instructorMapper.toResponse(instructorProfileRepository.save(instructorProfile));
+        InstructorProfile saved = instructorProfileRepository.saveAndFlush(instructorProfile);
+        instructorSearchEventPublisher.publish(saved);
+        return instructorMapper.toResponse(saved);
     }
 
     @Override
     @PreAuthorize("hasAuthority('instructor:reject')")
+    @Transactional
     public InstructorProfileResponse rejectInstructorProfile(String publicId, String reviewComment) {
         InstructorProfile instructorProfile = instructorProfileRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));
@@ -191,7 +195,9 @@ public class InstructorServiceImpl implements InstructorService {
         instructorProfile.setReviewComment(reviewComment);
         instructorProfile.setRejectedAt(LocalDateTime.now());
 
-        return instructorMapper.toResponse(instructorProfileRepository.save(instructorProfile));
+        InstructorProfile saved = instructorProfileRepository.saveAndFlush(instructorProfile);
+        instructorSearchEventPublisher.publish(saved);
+        return instructorMapper.toResponse(saved);
     }
 
     /**
@@ -199,6 +205,7 @@ public class InstructorServiceImpl implements InstructorService {
      */
     @Override
     @PreAuthorize("hasAuthority('instructor:suspend')")
+    @Transactional
     public InstructorProfileResponse suspendInstructorProfile(String publicId, String reviewComment) {
         InstructorProfile instructorProfile = instructorProfileRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));
@@ -221,7 +228,9 @@ public class InstructorServiceImpl implements InstructorService {
                 .build();
         accountServiceClient.revokeRoles(revokeRolesRequest);
 
-        return instructorMapper.toResponse(instructorProfileRepository.save(instructorProfile));
+        InstructorProfile saved = instructorProfileRepository.saveAndFlush(instructorProfile);
+        instructorSearchEventPublisher.publish(saved);
+        return instructorMapper.toResponse(saved);
     }
 
     /**
@@ -229,6 +238,7 @@ public class InstructorServiceImpl implements InstructorService {
      */
     @Override
     @PreAuthorize("hasAuthority('instructor:reactivate')")
+    @Transactional
     public InstructorProfileResponse reactivateInstructorProfile(String publicId, String reviewComment) {
         InstructorProfile instructorProfile = instructorProfileRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));
@@ -253,7 +263,9 @@ public class InstructorServiceImpl implements InstructorService {
                 .build();
         accountServiceClient.assignRoles(assignRolesRequest);
     
-        return instructorMapper.toResponse(instructorProfileRepository.save(instructorProfile));
+        InstructorProfile saved = instructorProfileRepository.saveAndFlush(instructorProfile);
+        instructorSearchEventPublisher.publish(saved);
+        return instructorMapper.toResponse(saved);
     }
 
     @Override

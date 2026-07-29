@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,8 +19,16 @@ public interface InstructorProfileRepository extends JpaRepository<InstructorPro
     @Query("SELECT i FROM InstructorProfile i WHERE i.profile.accountId = :accountId")
     Optional<InstructorProfile> findByAccountId(@Param("accountId") String accountId);
 
-    @Query("SELECT i FROM InstructorProfile i WHERE i.profile.id = :profileId")
-    Optional<InstructorProfile> findByProfileId(@Param("profileId") String profileId);
+    @EntityGraph(attributePaths = { "profile", "expertises" })
+    @Query("""
+            SELECT i
+            FROM InstructorProfile i
+            WHERE i.profile.publicId = :publicId
+              AND i.status = :status
+            """)
+    Optional<InstructorProfile> findByProfilePublicIdAndStatus(
+            @Param("publicId") String publicId,
+            @Param("status") EInstructorProfileStatus status);
     
     Optional<InstructorProfile> findByPublicId(String publicId);
 

@@ -15,9 +15,12 @@ import org.mapstruct.ReportingPolicy;
 
 import com.uniwise.common.dto.request.InstructorProfileCreateRequest;
 import com.uniwise.common.dto.request.InstructorProfileUpdateRequest;
+import com.uniwise.common.dto.response.AdminInstructorSearchResponse;
 import com.uniwise.common.dto.response.DegreeDto;
 import com.uniwise.common.dto.response.ExpertiseDto;
+import com.uniwise.common.dto.response.InstructorExpertiseResponse;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
+import com.uniwise.common.dto.response.PublicInstructorSearchResponse;
 import com.uniwise.user_service.modules.instructor.entity.DegreeCertificate;
 import com.uniwise.user_service.modules.instructor.entity.Expertise;
 import com.uniwise.user_service.modules.instructor.entity.InstructorProfile;
@@ -51,6 +54,21 @@ public interface InstructorMapper {
 
     @Mapping(target = "accountId", source = "profile.accountId")
     InstructorProfileResponse toResponse(InstructorProfile profile);
+
+    @Mapping(target = "publicId", source = "profile.publicId")
+    @Mapping(target = "name", source = "profile.name")
+    @Mapping(target = "professionalName", source = "name")
+    @Mapping(target = "avatarUrl", source = "profile.avatarUrl")
+    PublicInstructorSearchResponse toPublicSearchResponse(InstructorProfile profile);
+
+    @Mapping(target = "applicationPublicId", source = "publicId")
+    @Mapping(target = "publicId", source = "profile.publicId")
+    @Mapping(target = "name", source = "profile.name")
+    @Mapping(target = "professionalName", source = "name")
+    @Mapping(target = "avatarUrl", source = "profile.avatarUrl")
+    AdminInstructorSearchResponse toAdminSearchResponse(InstructorProfile profile);
+
+    InstructorExpertiseResponse toInstructorExpertiseResponse(Expertise expertise);
 
     DegreeCertificate toDegreeEntity(DegreeDto dto);
 

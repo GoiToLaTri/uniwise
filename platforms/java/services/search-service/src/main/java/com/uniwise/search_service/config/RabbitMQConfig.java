@@ -22,6 +22,9 @@ public class RabbitMQConfig {
     public static final String COURSE_METRICS_SYNC_QUEUE = "search.course.metrics.sync";
     public static final String COURSE_METRICS_SYNC_DLQ = "search.course.metrics.sync.dlq";
 
+    public static final String INSTRUCTOR_SEARCH_UPSERTED_QUEUE = "search.instructor.upserted";
+    public static final String INSTRUCTOR_SEARCH_UPSERTED_DLQ = "search.instructor.upserted.dlq";
+
     @Bean
     public Queue courseMetricsSyncDlq() {
         return new Queue(COURSE_METRICS_SYNC_DLQ, true);
@@ -83,6 +86,37 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(courseDeletedQueue)
                 .to(platformExchange)
                 .with(RoutingKeys.COURSE_DELETED);
+    }
+
+    @Bean
+    public Queue instructorSearchUpsertedDlq() {
+        return new Queue(INSTRUCTOR_SEARCH_UPSERTED_DLQ, true);
+    }
+
+    @Bean
+    public Binding instructorSearchUpsertedDlqBinding(
+            Queue instructorSearchUpsertedDlq,
+            TopicExchange dlxExchange) {
+        return BindingBuilder.bind(instructorSearchUpsertedDlq)
+                .to(dlxExchange)
+                .with(RoutingKeys.INSTRUCTOR_SEARCH_UPSERTED);
+    }
+
+    @Bean
+    public Queue instructorSearchUpsertedQueue() {
+        return QueueBuilder.durable(INSTRUCTOR_SEARCH_UPSERTED_QUEUE)
+                .withArgument("x-dead-letter-exchange", Exchanges.DLX)
+                .withArgument("x-dead-letter-routing-key", RoutingKeys.INSTRUCTOR_SEARCH_UPSERTED)
+                .build();
+    }
+
+    @Bean
+    public Binding instructorSearchUpsertedBinding(
+            Queue instructorSearchUpsertedQueue,
+            TopicExchange platformExchange) {
+        return BindingBuilder.bind(instructorSearchUpsertedQueue)
+                .to(platformExchange)
+                .with(RoutingKeys.INSTRUCTOR_SEARCH_UPSERTED);
     }
 
     // Bean TopicExchange platformExchange và dlxExchange đã được cấu hình tự động trong PlatformEventAutoConfiguration 

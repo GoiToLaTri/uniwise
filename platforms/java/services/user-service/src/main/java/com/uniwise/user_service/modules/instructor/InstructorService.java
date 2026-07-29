@@ -4,6 +4,7 @@ import com.uniwise.common.dto.request.InstructorProfileCreateRequest;
 import com.uniwise.common.dto.request.InstructorProfileUpdateRequest;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
 import com.uniwise.common.dto.response.PageResponse;
+import com.uniwise.common.dto.response.PublicInstructorSearchResponse;
 import com.uniwise.user_service.modules.instructor.enums.EInstructorProfileStatus;
 
 public interface InstructorService {
@@ -13,7 +14,7 @@ public interface InstructorService {
 
     InstructorProfileResponse updateMyInstructorProfile(InstructorProfileUpdateRequest request);
 
-    InstructorProfileResponse getInstructorProfileByProfileId(String profileId);
+    PublicInstructorSearchResponse getPublicInstructorProfile(String publicId);
 
     InstructorProfileResponse getInstructorProfileByAccountId(String accountId);
 
