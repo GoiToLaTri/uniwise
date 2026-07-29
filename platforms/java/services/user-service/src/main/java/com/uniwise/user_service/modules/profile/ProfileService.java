@@ -18,6 +18,8 @@ public interface ProfileService {
 
     PublicProfileResponse getProfileByAccountId(String accountId);
 
+    PublicProfileResponse getPublicProfileForInternalUse(String accountId);
+
     ProfileResponse createProfile(ProfileCreateRequest request);
 
     ProfileResponse createProfileForAccount(String accountId, ProfileCreateRequest request);

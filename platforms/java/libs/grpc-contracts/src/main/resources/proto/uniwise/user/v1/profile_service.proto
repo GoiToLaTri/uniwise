@@ -10,6 +10,10 @@ option java_outer_classname = "ProfileServiceProto";
 service ProfileService {
   // Tạo profile mới gắn với một account đã tồn tại.
   rpc CreateProfile(CreateProfileRequest) returns (CreateProfileResponse);
+
+  // Tra cứu phần thông tin công khai của profile bằng account ID nội bộ.
+  rpc GetPublicProfileByAccountId(GetPublicProfileByAccountIdRequest)
+      returns (GetPublicProfileByAccountIdResponse);
 }
 
 message CreateProfileRequest {
@@ -20,6 +24,20 @@ message CreateProfileRequest {
 
 message CreateProfileResponse {
   Profile profile = 1;
+}
+
+message GetPublicProfileByAccountIdRequest {
+  string account_id = 1;
+}
+
+message GetPublicProfileByAccountIdResponse {
+  PublicProfile profile = 1;
+}
+
+message PublicProfile {
+  string public_id = 1;
+  string name = 2;
+  string avatar_url = 3;
 }
 
 message Profile {

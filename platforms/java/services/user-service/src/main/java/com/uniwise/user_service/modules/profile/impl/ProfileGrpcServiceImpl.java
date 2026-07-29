@@ -4,9 +4,13 @@ import org.springframework.stereotype.Service;
 
 import com.uniwise.common.dto.request.ProfileCreateRequest;
 import com.uniwise.common.dto.response.ProfileResponse;
+import com.uniwise.common.dto.response.PublicProfileResponse;
 import com.uniwise.user.profile.v1.CreateProfileRequest;
 import com.uniwise.user.profile.v1.CreateProfileResponse;
+import com.uniwise.user.profile.v1.GetPublicProfileByAccountIdRequest;
+import com.uniwise.user.profile.v1.GetPublicProfileByAccountIdResponse;
 import com.uniwise.user.profile.v1.Profile;
+import com.uniwise.user.profile.v1.PublicProfile;
 import com.uniwise.user_service.modules.profile.ProfileGrpcService;
 import com.uniwise.user_service.modules.profile.ProfileService;
 
@@ -43,5 +47,26 @@ public class ProfileGrpcServiceImpl implements ProfileGrpcService {
                         .setName(request.getName())
                         .build())
                 .build();
+    }
+
+    @Override
+    public GetPublicProfileByAccountIdResponse getPublicProfileByAccountId(
+            GetPublicProfileByAccountIdRequest request) {
+        log.debug("Fetching public profile for an internal account");
+
+        PublicProfileResponse profile = profileService.getPublicProfileForInternalUse(
+                request.getAccountId());
+
+        return GetPublicProfileByAccountIdResponse.newBuilder()
+                .setProfile(PublicProfile.newBuilder()
+                        .setPublicId(valueOrEmpty(profile.getPublicId()))
+                        .setName(valueOrEmpty(profile.getName()))
+                        .setAvatarUrl(valueOrEmpty(profile.getAvatarUrl()))
+                        .build())
+                .build();
+    }
+
+    private String valueOrEmpty(String value) {
+        return value == null ? "" : value;
     }
 }

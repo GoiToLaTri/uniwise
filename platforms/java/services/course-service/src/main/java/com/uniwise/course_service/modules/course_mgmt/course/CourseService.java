@@ -19,6 +19,8 @@ public interface CourseService {
             int page, int size,
             String status, String keyword,
             String sortBy, String sortDir);
+    int backfillInstructorSnapshotsAndReindex();
+    void syncInstructorSnapshot(String accountId, String publicId, String name, String avatarUrl);
     Course getEntityByPublicId(String publicId);
     Course getEntityById(String id);
     void incrementStudentCountAndQueueSync(String courseId);

@@ -1,9 +1,11 @@
 package com.uniwise.course_service.modules.course_mgmt.course.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -19,6 +21,12 @@ public interface CourseRepository extends JpaRepository<Course, String> {
     Optional<Course> findByPublicId(String publicId);
 
     boolean existsByPublicId(String publicId);
+
+    @EntityGraph(attributePaths = "priceTier")
+    List<Course> findAllByIsActiveTrue();
+
+    @EntityGraph(attributePaths = "priceTier")
+    List<Course> findAllByCreatorIdAndIsActiveTrue(String creatorId);
 
     @Query("SELECT c FROM Course c WHERE " +
             "c.isActive = true " +

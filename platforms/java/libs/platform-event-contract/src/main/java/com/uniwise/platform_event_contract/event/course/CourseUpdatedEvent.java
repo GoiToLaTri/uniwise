@@ -13,10 +13,14 @@ import lombok.NoArgsConstructor;
 public class CourseUpdatedEvent {
     private String id;
     private String publicId;
+    private String creatorId;
     private String title;
     private String description;
     private String status;
     private String thumbnailUrl;
     private String priceTierId;
+    private String instructorPublicId;
+    private String instructorName;
+    private String instructorAvatarUrl;
     private Instant updatedAt;
 }

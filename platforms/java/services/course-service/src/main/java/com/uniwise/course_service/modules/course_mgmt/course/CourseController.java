@@ -90,6 +90,16 @@ public class CourseController {
                 .build();
     }
 
+    @PostMapping("/maintenance/instructor-snapshots/backfill")
+    public ApiResponse<Integer> backfillInstructorSnapshotsAndReindex() {
+        int processedCourses = courseService.backfillInstructorSnapshotsAndReindex();
+        return ApiResponse.<Integer>builder()
+                .code("OK")
+                .message("Instructor snapshots backfilled and reindex events published")
+                .data(processedCourses)
+                .build();
+    }
+
     // ===== PUT /api/v1/courses/{id} =====
     @PutMapping("/{id}")
     public ApiResponse<CourseResponse> update(

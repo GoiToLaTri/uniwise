@@ -6,9 +6,11 @@ import java.util.stream.Collectors;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 
+import com.uniwise.common.dto.response.InstructorSummaryResponse;
 import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.platform_event_contract.event.course.CourseMetricsSyncEvent;
 import com.uniwise.search_service.modules.course.CourseSearchService;
+import com.uniwise.search_service.modules.course.dto.CourseSearchResponse;
 import com.uniwise.search_service.modules.course.entity.CourseDocument;
 import com.uniwise.search_service.modules.redis.RedisService;
 
@@ -38,26 +40,26 @@ public class CourseSearchServiceImpl implements CourseSearchService {
 
     @Override
     @PreAuthorize("hasAuthority('search:all-course')")
-    public PageResponse<CourseDocument> searchCourses(String keyword, int page, int size) {
+    public PageResponse<CourseSearchResponse> searchCourses(String keyword, int page, int size) {
         return searchCourses(keyword, null, null, page, size);
     }
 
     @Override
-    public PageResponse<CourseDocument> searchPublishedCourses(String keyword, int page, int size) {
+    public PageResponse<CourseSearchResponse> searchPublishedCourses(String keyword, int page, int size) {
         // Chỉ cache trang đầu tiên (page == 0) và khi không có từ khóa tìm kiếm
         if ((keyword == null || keyword.trim().isEmpty()) && page == 0) {
-            String cacheKey = "search_courses::published:page:" + page + ":size:" + size;
+            String cacheKey = "search_courses::published:v2:page:" + page + ":size:" + size;
 
             // 1. Check Redis
-            PageResponse<CourseDocument> cached = redisService.getKey(cacheKey,
-                    new com.fasterxml.jackson.core.type.TypeReference<PageResponse<CourseDocument>>() {
+            PageResponse<CourseSearchResponse> cached = redisService.getKey(cacheKey,
+                    new com.fasterxml.jackson.core.type.TypeReference<PageResponse<CourseSearchResponse>>() {
                     });
             if (cached != null) {
                 return cached;
             }
 
             // 2. Query ES
-            PageResponse<CourseDocument> result = searchCourses(keyword, "PUBLISHED", null, page, size);
+            PageResponse<CourseSearchResponse> result = searchCourses(keyword, "PUBLISHED", null, page, size);
 
             // 3. Save to Redis
             if (result != null) {
@@ -70,7 +72,8 @@ public class CourseSearchServiceImpl implements CourseSearchService {
 
     @Override
     @PreAuthorize("hasAuthority('search:creator-course')")
-    public PageResponse<CourseDocument> searchCreatorCourses(String keyword, String status, String creatorId, int page, int size) {
+    public PageResponse<CourseSearchResponse> searchCreatorCourses(
+            String keyword, String status, String creatorId, int page, int size) {
         // KHÔNG cache kết quả của từng creator để tránh đầy bộ nhớ Redis
         return searchCourses(keyword, status, creatorId, page, size);
     }
@@ -87,7 +90,8 @@ public class CourseSearchServiceImpl implements CourseSearchService {
      * @param size      Số lượng phần tử trên mỗi trang
      * @return PageResponse chứa danh sách khóa học và thông tin phân trang
      */
-    private PageResponse<CourseDocument> searchCourses(String keyword, String status, String creatorId, int page,
+    private PageResponse<CourseSearchResponse> searchCourses(
+            String keyword, String status, String creatorId, int page,
             int size) {
         Pageable pageable = PageRequest.of(page, size);
 
@@ -145,17 +149,47 @@ public class CourseSearchServiceImpl implements CourseSearchService {
 
         SearchHits<CourseDocument> searchHits = elasticsearchOperations.search(nativeQuery, CourseDocument.class);
 
-        List<CourseDocument> documents = searchHits.stream()
+        List<CourseSearchResponse> documents = searchHits.stream()
                 .map(SearchHit::getContent)
+                .map(this::toResponse)
                 .collect(Collectors.toList());
 
-        return PageResponse.<CourseDocument>builder()
+        return PageResponse.<CourseSearchResponse>builder()
                 .content(documents)
                 .pageNumber(pageable.getPageNumber())
                 .pageSize(pageable.getPageSize())
                 .totalElements(searchHits.getTotalHits())
                 .totalPages((int) Math.ceil((double) searchHits.getTotalHits() / size))
                 .last((page + 1) * size >= searchHits.getTotalHits())
+                .build();
+    }
+
+    private CourseSearchResponse toResponse(CourseDocument document) {
+        InstructorSummaryResponse instructor = null;
+        if (document.getInstructorPublicId() != null
+                || document.getInstructorName() != null
+                || document.getInstructorAvatarUrl() != null) {
+            instructor = InstructorSummaryResponse.builder()
+                    .publicId(document.getInstructorPublicId())
+                    .name(document.getInstructorName())
+                    .avatarUrl(document.getInstructorAvatarUrl())
+                    .build();
+        }
+
+        return CourseSearchResponse.builder()
+                .id(document.getId())
+                .publicId(document.getPublicId())
+                .title(document.getTitle())
+                .description(document.getDescription())
+                .instructor(instructor)
+                .status(document.getStatus())
+                .thumbnailUrl(document.getThumbnailUrl())
+                .priceTierId(document.getPriceTierId())
+                .studentCount(document.getStudentCount())
+                .averageRating(document.getAverageRating())
+                .totalReviews(document.getTotalReviews())
+                .totalLessons(document.getTotalLessons())
+                .totalSections(document.getTotalSections())
                 .build();
     }
 

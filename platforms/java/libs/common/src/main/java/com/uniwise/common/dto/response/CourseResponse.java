@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 public class CourseResponse {
     private String id;
     private String publicId;
-    private String creatorId;
+    private InstructorSummaryResponse instructor;
     private String priceTierId;
     private String title;
     private String description;

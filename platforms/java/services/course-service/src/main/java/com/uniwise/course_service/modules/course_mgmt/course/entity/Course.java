@@ -44,6 +44,15 @@ public class Course {
  
     @Column(name = "creator_id")
     private String creatorId;
+
+    @Column(name = "instructor_public_id", length = 100)
+    private String instructorPublicId;
+
+    @Column(name = "instructor_name", length = 100)
+    private String instructorName;
+
+    @Column(name = "instructor_avatar_url", length = 2048)
+    private String instructorAvatarUrl;
  
     // Nullable: null nếu khóa học Miễn phí
     @ManyToOne(fetch = FetchType.LAZY)

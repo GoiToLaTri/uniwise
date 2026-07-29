@@ -34,6 +34,9 @@ public class CourseEventListener {
                 .title(event.getTitle())
                 .description(event.getDescription())
                 .creatorId(event.getCreatorId())
+                .instructorPublicId(event.getInstructorPublicId())
+                .instructorName(event.getInstructorName())
+                .instructorAvatarUrl(event.getInstructorAvatarUrl())
                 .status(event.getStatus())
                 .thumbnailUrl(event.getThumbnailUrl())
                 .priceTierId(event.getPriceTierId())
@@ -50,17 +53,28 @@ public class CourseEventListener {
         CourseUpdatedEvent event = envelope.getPayload();
         log.info("Received CourseUpdatedEvent for indexing: {}", event.getPublicId());
 
-        courseDocumentRepository.findById(event.getId()).ifPresent(doc -> {
-            doc.setTitle(event.getTitle());
-            doc.setDescription(event.getDescription());
-            doc.setStatus(event.getStatus());
-            doc.setThumbnailUrl(event.getThumbnailUrl());
-            doc.setPriceTierId(event.getPriceTierId());
-            courseDocumentRepository.save(doc);
+        CourseDocument doc = courseDocumentRepository.findById(event.getId())
+                .orElseGet(() -> CourseDocument.builder().id(event.getId()).build());
+        doc.setPublicId(event.getPublicId());
+        if (event.getCreatorId() != null && !event.getCreatorId().isBlank()) {
+            doc.setCreatorId(event.getCreatorId());
+        }
+        doc.setTitle(event.getTitle());
+        doc.setDescription(event.getDescription());
+        if (event.getInstructorPublicId() != null
+                || event.getInstructorName() != null
+                || event.getInstructorAvatarUrl() != null) {
+            doc.setInstructorPublicId(event.getInstructorPublicId());
+            doc.setInstructorName(event.getInstructorName());
+            doc.setInstructorAvatarUrl(event.getInstructorAvatarUrl());
+        }
+        doc.setStatus(event.getStatus());
+        doc.setThumbnailUrl(event.getThumbnailUrl());
+        doc.setPriceTierId(event.getPriceTierId());
+        courseDocumentRepository.save(doc);
 
-            // Clear cache to ensure data consistency
-            redisService.deleteKeysByPattern("search_courses::published:*");
-        });
+        // Clear cache to ensure data consistency
+        redisService.deleteKeysByPattern("search_courses::published:*");
     }
 
     @RabbitListener(queues = RabbitMQConfig.COURSE_DELETED_QUEUE)

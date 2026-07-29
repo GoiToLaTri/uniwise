@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.uniwise.common.dto.response.ApiResponse;
 import com.uniwise.common.dto.response.PageResponse;
-import com.uniwise.search_service.modules.course.entity.CourseDocument;
+import com.uniwise.search_service.modules.course.dto.CourseSearchResponse;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,12 +22,12 @@ public class CourseSearchController {
 
         @GetMapping
         @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('search:all-course')")
-        public ApiResponse<PageResponse<CourseDocument>> search(
+        public ApiResponse<PageResponse<CourseSearchResponse>> search(
                         @RequestParam(defaultValue = "") String keyword,
                         @RequestParam(defaultValue = "0") int page,
                         @RequestParam(defaultValue = "10") int size) {
 
-                return ApiResponse.<PageResponse<CourseDocument>>builder()
+                return ApiResponse.<PageResponse<CourseSearchResponse>>builder()
                                 .code("OK")
                                 .message("Search all courses successfully")
                                 .data(courseSearchService.searchCourses(keyword, page, size))
@@ -35,12 +35,12 @@ public class CourseSearchController {
         }
 
         @GetMapping("/published")
-        public ApiResponse<PageResponse<CourseDocument>> searchPublished(
+        public ApiResponse<PageResponse<CourseSearchResponse>> searchPublished(
                         @RequestParam(defaultValue = "") String keyword,
                         @RequestParam(defaultValue = "0") int page,
                         @RequestParam(defaultValue = "10") int size) {
 
-                return ApiResponse.<PageResponse<CourseDocument>>builder()
+                return ApiResponse.<PageResponse<CourseSearchResponse>>builder()
                                 .code("OK")
                                 .message("Search published courses successfully")
                                 .data(courseSearchService.searchPublishedCourses(keyword, page, size))
@@ -48,7 +48,7 @@ public class CourseSearchController {
         }
 
         @GetMapping("/creator")
-        public ApiResponse<PageResponse<CourseDocument>> searchCreatorCourses(
+        public ApiResponse<PageResponse<CourseSearchResponse>> searchCreatorCourses(
                         Principal principal,
                         @RequestParam(defaultValue = "") String keyword,
                         @RequestParam(required = false) String status,
@@ -59,7 +59,7 @@ public class CourseSearchController {
                 // Security
                 String currentUserId = principal.getName();
 
-                return ApiResponse.<PageResponse<CourseDocument>>builder()
+                return ApiResponse.<PageResponse<CourseSearchResponse>>builder()
                                 .code("OK")
                                 .message("Search creator courses successfully")
                                 .data(courseSearchService.searchCreatorCourses(keyword, status, currentUserId, page, size))

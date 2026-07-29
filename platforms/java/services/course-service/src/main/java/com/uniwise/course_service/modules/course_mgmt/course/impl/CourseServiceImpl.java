@@ -3,8 +3,11 @@ package com.uniwise.course_service.modules.course_mgmt.course.impl;
 import java.util.Optional;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -37,18 +40,25 @@ import com.uniwise.course_service.modules.course_mgmt.lesson.repository.LessonRe
 import com.uniwise.course_service.modules.course_mgmt.lesson.entity.Lesson;
 import com.uniwise.course_service.modules.learning_progress.LearningProgressService;
 import com.uniwise.course_service.modules.learning_progress.entity.UserLesson;
+import com.uniwise.grpc_spring_boot_starter.annotation.GrpcClient;
 import com.uniwise.platform_event_contract.constant.RoutingKeys;
 import com.uniwise.platform_event_contract.event.course.CourseCreatedEvent;
 import com.uniwise.platform_event_contract.event.course.CourseDeletedEvent;
 import com.uniwise.platform_event_contract.event.course.CourseUpdatedEvent;
 import com.uniwise.platform_event_starter.publisher.EventPublisher;
+import com.uniwise.user.profile.v1.GetPublicProfileByAccountIdRequest;
+import com.uniwise.user.profile.v1.ProfileServiceGrpc.ProfileServiceBlockingStub;
+import com.uniwise.user.profile.v1.PublicProfile;
 
 import java.time.Instant;
 
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -56,6 +66,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class CourseServiceImpl implements CourseService {
+
+    @NonFinal
+    @GrpcClient("user-service")
+    ProfileServiceBlockingStub profileServiceClient;
 
     CourseRepository courseRepository;
     CourseSyncQueueRepository courseSyncQueueRepository;
@@ -91,7 +105,13 @@ public class CourseServiceImpl implements CourseService {
         } while (courseRepository.existsByPublicId(publicId));
         course.setPublicId(publicId);
 
-        course.setCreatorId(getCurrentAccountId());
+        String creatorId = getCurrentAccountId();
+        PublicProfile instructor = getInstructorProfile(creatorId);
+
+        course.setCreatorId(creatorId);
+        course.setInstructorPublicId(instructor.getPublicId());
+        course.setInstructorName(instructor.getName());
+        course.setInstructorAvatarUrl(instructor.getAvatarUrl());
         course.setPriceTier(priceTier);
         course.setIsActive(true); // Always active initially
 
@@ -113,6 +133,9 @@ public class CourseServiceImpl implements CourseService {
                 .status(saved.getStatus().name())
                 .thumbnailUrl(saved.getThumbnailUrl())
                 .priceTierId(saved.getPriceTier() != null ? saved.getPriceTier().getId() : null)
+                .instructorPublicId(saved.getInstructorPublicId())
+                .instructorName(saved.getInstructorName())
+                .instructorAvatarUrl(saved.getInstructorAvatarUrl())
                 .build());
 
         return courseMapper.toResponse(saved);
@@ -290,16 +313,7 @@ public class CourseServiceImpl implements CourseService {
         log.info("Course updated successfully with id: {}, publicId: {}", saved.getId(), saved.getPublicId());
 
         // Publish Event
-        eventPublisher.publish(RoutingKeys.COURSE_UPDATED, CourseUpdatedEvent.builder()
-                .id(saved.getId())
-                .publicId(saved.getPublicId())
-                .title(saved.getTitle())
-                .description(saved.getDescription())
-                .status(saved.getStatus().name())
-                .thumbnailUrl(saved.getThumbnailUrl())
-                .priceTierId(saved.getPriceTier() != null ? saved.getPriceTier().getId() : null)
-                .updatedAt(Instant.now())
-                .build());
+        publishCourseUpdatedEvent(saved);
 
         return courseMapper.toResponse(saved);
     }
@@ -331,6 +345,61 @@ public class CourseServiceImpl implements CourseService {
         String currentAccountId = getCurrentAccountId();
         log.info("Fetching my courses for accountId: {}", currentAccountId);
         return getAll(page, size, currentAccountId, status, keyword, sortBy, sortDir);
+    }
+
+    @Override
+    @PreAuthorize("hasRole('ADMIN')")
+    public int backfillInstructorSnapshotsAndReindex() {
+        List<Course> courses = courseRepository.findAllByIsActiveTrue();
+        List<Course> coursesToUpdate = new ArrayList<>();
+        Map<String, PublicProfile> profilesByCreator = new HashMap<>();
+
+        for (Course course : courses) {
+            if (hasInstructorSnapshot(course)) {
+                continue;
+            }
+
+            PublicProfile profile = profilesByCreator.computeIfAbsent(
+                    course.getCreatorId(),
+                    this::getInstructorProfile);
+            course.setInstructorPublicId(profile.getPublicId());
+            course.setInstructorName(profile.getName());
+            course.setInstructorAvatarUrl(profile.getAvatarUrl());
+            coursesToUpdate.add(course);
+        }
+
+        if (!coursesToUpdate.isEmpty()) {
+            courseRepository.saveAll(coursesToUpdate);
+        }
+        courses.forEach(this::publishCourseUpdatedEvent);
+        log.info("Backfilled {} instructor snapshots and published reindex events for {} courses",
+                coursesToUpdate.size(), courses.size());
+        return courses.size();
+    }
+
+    @Override
+    public void syncInstructorSnapshot(String accountId, String publicId, String name, String avatarUrl) {
+        List<Course> courses = courseRepository.findAllByCreatorIdAndIsActiveTrue(accountId);
+        List<Course> coursesToUpdate = new ArrayList<>();
+        for (Course course : courses) {
+            boolean snapshotChanged = !Objects.equals(course.getInstructorPublicId(), publicId)
+                    || !Objects.equals(course.getInstructorName(), name)
+                    || !Objects.equals(course.getInstructorAvatarUrl(), avatarUrl);
+            if (snapshotChanged) {
+                course.setInstructorPublicId(publicId);
+                course.setInstructorName(name);
+                course.setInstructorAvatarUrl(avatarUrl);
+                coursesToUpdate.add(course);
+            }
+        }
+
+        if (!coursesToUpdate.isEmpty()) {
+            courseRepository.saveAll(coursesToUpdate);
+        }
+
+        courses.forEach(this::publishCourseUpdatedEvent);
+        log.info("Synchronized instructor snapshot for account {}: updated={}, reindexed={}",
+                accountId, coursesToUpdate.size(), courses.size());
     }
 
     // ===== INTERNAL =====
@@ -388,6 +457,56 @@ public class CourseServiceImpl implements CourseService {
         return Optional.ofNullable(context.getAuthentication())
                 .map(authentication -> authentication.getName())
                 .orElse("");
+    }
+
+    private PublicProfile getInstructorProfile(String accountId) {
+        try {
+            PublicProfile profile = profileServiceClient
+                    .withDeadlineAfter(3, TimeUnit.SECONDS)
+                    .getPublicProfileByAccountId(
+                            GetPublicProfileByAccountIdRequest.newBuilder()
+                                    .setAccountId(accountId)
+                                    .build())
+                    .getProfile();
+
+            if (profile.getPublicId().isBlank() || profile.getName().isBlank()) {
+                throw new HttpException(CourseError.INSTRUCTOR_PROFILE_NOT_FOUND);
+            }
+
+            return profile;
+        } catch (StatusRuntimeException exception) {
+            if (exception.getStatus().getCode() == Status.Code.NOT_FOUND) {
+                throw new HttpException(CourseError.INSTRUCTOR_PROFILE_NOT_FOUND);
+            }
+
+            log.error("Unable to fetch instructor profile for course creation: status={}",
+                    exception.getStatus().getCode());
+            throw new HttpException(CourseError.INSTRUCTOR_PROFILE_SERVICE_UNAVAILABLE);
+        }
+    }
+
+    private boolean hasInstructorSnapshot(Course course) {
+        return course.getInstructorPublicId() != null
+                && !course.getInstructorPublicId().isBlank()
+                && course.getInstructorName() != null
+                && !course.getInstructorName().isBlank();
+    }
+
+    private void publishCourseUpdatedEvent(Course course) {
+        eventPublisher.publish(RoutingKeys.COURSE_UPDATED, CourseUpdatedEvent.builder()
+                .id(course.getId())
+                .publicId(course.getPublicId())
+                .creatorId(course.getCreatorId())
+                .title(course.getTitle())
+                .description(course.getDescription())
+                .status(course.getStatus().name())
+                .thumbnailUrl(course.getThumbnailUrl())
+                .priceTierId(course.getPriceTier() != null ? course.getPriceTier().getId() : null)
+                .instructorPublicId(course.getInstructorPublicId())
+                .instructorName(course.getInstructorName())
+                .instructorAvatarUrl(course.getInstructorAvatarUrl())
+                .updatedAt(Instant.now())
+                .build());
     }
 
     private void requireCreatorOrAdmin(Course course) {

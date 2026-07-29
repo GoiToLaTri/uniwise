@@ -18,4 +18,7 @@ public class CourseCreatedEvent {
     private String status;
     private String thumbnailUrl;
     private String priceTierId;
+    private String instructorPublicId;
+    private String instructorName;
+    private String instructorAvatarUrl;
 }

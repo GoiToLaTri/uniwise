@@ -134,6 +134,13 @@
 			<artifactId>grpc-spring-boot-starter</artifactId>
 			<version>0.0.2</version>
 		</dependency>
+
+		<dependency>
+			<groupId>com.uniwise</groupId>
+			<artifactId>platform-event-starter</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>

@@ -1,6 +1,7 @@
 package com.uniwise.user_service.modules.profile.impl;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -22,6 +23,9 @@ import com.uniwise.common.dto.response.ProfileResponse;
 import com.uniwise.common.dto.response.PublicProfileResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.ProfileError;
+import com.uniwise.platform_event_contract.constant.RoutingKeys;
+import com.uniwise.platform_event_contract.event.profile.ProfileUpdatedEvent;
+import com.uniwise.platform_event_starter.publisher.EventPublisher;
 import com.uniwise.user_service.modules.profile.ProfileService;
 import com.uniwise.user_service.modules.profile.entity.Profile;
 import com.uniwise.user_service.modules.profile.enums.ProfileType;
@@ -40,6 +44,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ProfileServiceImpl implements ProfileService {
     ProfileRepository profileRepository;
     ProfileMapper profileMapper;
+    EventPublisher eventPublisher;
 
     @Override
     public ProfileResponse getProfile() {
@@ -95,6 +100,14 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PublicProfileResponse getPublicProfileForInternalUse(String accountId) {
+        return profileRepository.findByAccountId(accountId)
+                .map(profileMapper::toPublicResponse)
+                .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
+    }
+
+    @Override
     @Transactional
     public ProfileResponse createProfile(ProfileCreateRequest request) {
         return createProfileForAccount(getCurrentAccountId(), request);
@@ -130,22 +143,18 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
+    @Transactional
     public ProfileResponse updateProfile(ProfileUpdateRequest request) {
-        String accountId = getCurrentAccountId();
-        Profile profile = profileRepository.findByAccountId(accountId)
-                .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
-
-        if (request.getPublicId() != null && !request.getPublicId().equals(profile.getPublicId())
-                && profileRepository.existsByPublicId(request.getPublicId())) {
-            throw new HttpException(ProfileError.PUBLIC_ID_ALREADY_EXISTS);
-        }
-
-        profileMapper.updateEntity(request, profile);
-        return profileMapper.toResponse(profileRepository.save(profile));
+        return updateProfileForAccount(getCurrentAccountId(), request);
     }
 
     @Override
+    @Transactional
     public ProfileResponse updateProfileByAccountId(String accountId, ProfileUpdateRequest request) {
+        return updateProfileForAccount(accountId, request);
+    }
+
+    private ProfileResponse updateProfileForAccount(String accountId, ProfileUpdateRequest request) {
         Profile profile = profileRepository.findByAccountId(accountId)
                 .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
 
@@ -154,8 +163,25 @@ public class ProfileServiceImpl implements ProfileService {
             throw new HttpException(ProfileError.PUBLIC_ID_ALREADY_EXISTS);
         }
 
+        String previousPublicId = profile.getPublicId();
+        String previousName = profile.getName();
+        String previousAvatarUrl = profile.getAvatarUrl();
+
         profileMapper.updateEntity(request, profile);
-        return profileMapper.toResponse(profileRepository.save(profile));
+        Profile saved = profileRepository.save(profile);
+
+        if (!Objects.equals(previousPublicId, saved.getPublicId())
+                || !Objects.equals(previousName, saved.getName())
+                || !Objects.equals(previousAvatarUrl, saved.getAvatarUrl())) {
+            eventPublisher.publish(RoutingKeys.PROFILE_UPDATED, ProfileUpdatedEvent.builder()
+                    .accountId(saved.getAccountId())
+                    .publicId(saved.getPublicId())
+                    .name(saved.getName())
+                    .avatarUrl(saved.getAvatarUrl())
+                    .build());
+        }
+
+        return profileMapper.toResponse(saved);
     }
 
     private String getCurrentAccountId() {

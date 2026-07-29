@@ -33,6 +33,15 @@ public class CourseDocument {
     private String creatorId;
 
     @Field(type = FieldType.Keyword)
+    private String instructorPublicId;
+
+    @Field(type = FieldType.Text, analyzer = "standard")
+    private String instructorName;
+
+    @Field(type = FieldType.Keyword)
+    private String instructorAvatarUrl;
+
+    @Field(type = FieldType.Keyword)
     private String status;
 
     @Field(type = FieldType.Keyword)
