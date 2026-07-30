@@ -20,6 +20,8 @@ import com.uniwise.common.dto.response.DegreeDto;
 import com.uniwise.common.dto.response.ExpertiseDto;
 import com.uniwise.common.dto.response.InstructorExpertiseResponse;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
+import com.uniwise.common.dto.response.PublicInstructorDegreeResponse;
+import com.uniwise.common.dto.response.PublicInstructorProfileResponse;
 import com.uniwise.common.dto.response.PublicInstructorSearchResponse;
 import com.uniwise.user_service.modules.instructor.entity.DegreeCertificate;
 import com.uniwise.user_service.modules.instructor.entity.Expertise;
@@ -61,6 +63,12 @@ public interface InstructorMapper {
     @Mapping(target = "avatarUrl", source = "profile.avatarUrl")
     PublicInstructorSearchResponse toPublicSearchResponse(InstructorProfile profile);
 
+    @Mapping(target = "publicId", source = "profile.publicId")
+    @Mapping(target = "name", source = "profile.name")
+    @Mapping(target = "professionalName", source = "name")
+    @Mapping(target = "avatarUrl", source = "profile.avatarUrl")
+    PublicInstructorProfileResponse toPublicProfileResponse(InstructorProfile profile);
+
     @Mapping(target = "applicationPublicId", source = "publicId")
     @Mapping(target = "publicId", source = "profile.publicId")
     @Mapping(target = "name", source = "profile.name")
@@ -69,6 +77,8 @@ public interface InstructorMapper {
     AdminInstructorSearchResponse toAdminSearchResponse(InstructorProfile profile);
 
     InstructorExpertiseResponse toInstructorExpertiseResponse(Expertise expertise);
+
+    PublicInstructorDegreeResponse toPublicDegreeResponse(DegreeCertificate degree);
 
     DegreeCertificate toDegreeEntity(DegreeDto dto);
 

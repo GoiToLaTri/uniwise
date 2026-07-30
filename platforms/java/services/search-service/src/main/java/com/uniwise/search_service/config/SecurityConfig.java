@@ -33,6 +33,7 @@ public class SecurityConfig {
     private static final Endpoint[] PUBLIC_ENDPOINT = {
             new Endpoint("/v3/api-docs", HttpMethod.GET),
             new Endpoint("/api/v1/search/courses/published", HttpMethod.GET),
+            new Endpoint("/api/v1/search/instructors", HttpMethod.GET),
     };
 
     @Bean

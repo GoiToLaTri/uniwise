@@ -64,12 +64,14 @@ public class CourseController {
     public ApiResponse<PageResponse<CourseResponse>> getPublished(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String instructorPublicId,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
         return ApiResponse.<PageResponse<CourseResponse>>builder()
                 .code("OK")
                 .message("Published courses retrieved successfully")
-                .data(courseService.getAll(page, size, null, "PUBLISHED", null, sortBy, sortDir))
+                .data(courseService.getAll(
+                        page, size, null, instructorPublicId, "PUBLISHED", null, sortBy, sortDir))
                 .build();
     }
 
@@ -79,6 +81,7 @@ public class CourseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String creatorId,
+            @RequestParam(required = false) String instructorPublicId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -86,7 +89,8 @@ public class CourseController {
         return ApiResponse.<PageResponse<CourseResponse>>builder()
                 .code("OK")
                 .message("Courses retrieved successfully")
-                .data(courseService.getAll(page, size, creatorId, status, keyword, sortBy, sortDir))
+                .data(courseService.getAll(
+                        page, size, creatorId, instructorPublicId, status, keyword, sortBy, sortDir))
                 .build();
     }
 

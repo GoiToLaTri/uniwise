@@ -11,7 +11,7 @@ public interface CourseService {
     CourseResponse getByPublicId(String publicId);
     PageResponse<CourseResponse> getAll(
             int page, int size,
-            String creatorId, String status, String keyword,
+            String creatorId, String instructorPublicId, String status, String keyword,
             String sortBy, String sortDir);
     CourseResponse update(String publicId, CourseUpdateRequest request);
     void delete(String publicId);

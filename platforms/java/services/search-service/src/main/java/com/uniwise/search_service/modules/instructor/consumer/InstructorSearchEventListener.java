@@ -19,6 +19,7 @@ import com.uniwise.search_service.modules.instructor.entity.InstructorDegreeDocu
 import com.uniwise.search_service.modules.instructor.entity.InstructorDocument;
 import com.uniwise.search_service.modules.instructor.entity.InstructorExpertiseDocument;
 import com.uniwise.search_service.modules.instructor.repository.InstructorDocumentRepository;
+import com.uniwise.search_service.modules.redis.RedisService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 public class InstructorSearchEventListener {
 
     private final InstructorDocumentRepository instructorDocumentRepository;
+    private final RedisService redisService;
 
     // Nhận snapshot giảng viên từ RabbitMQ và đồng bộ vào Elasticsearch.
     @RabbitListener(queues = RabbitMQConfig.INSTRUCTOR_SEARCH_UPSERTED_QUEUE)
@@ -58,6 +60,7 @@ public class InstructorSearchEventListener {
         // save() sẽ tạo mới nếu document chưa tồn tại, hoặc cập nhật nếu đã tồn tại.
         InstructorDocument document = toDocument(event, incomingTimestamp);
         instructorDocumentRepository.save(document);
+        redisService.deleteKeysByPattern("search_instructors::public:*");
         log.info("Upserted instructor search document: publicId={}, status={}, eventId={}",
                 event.getPublicId(), event.getStatus(), envelope.getEventId());
     }

@@ -37,13 +37,15 @@ public class CourseSearchController {
         @GetMapping("/published")
         public ApiResponse<PageResponse<CourseSearchResponse>> searchPublished(
                         @RequestParam(defaultValue = "") String keyword,
+                        @RequestParam(required = false) String instructorPublicId,
                         @RequestParam(defaultValue = "0") int page,
                         @RequestParam(defaultValue = "10") int size) {
 
                 return ApiResponse.<PageResponse<CourseSearchResponse>>builder()
                                 .code("OK")
                                 .message("Search published courses successfully")
-                                .data(courseSearchService.searchPublishedCourses(keyword, page, size))
+                                .data(courseSearchService.searchPublishedCourses(
+                                                keyword, instructorPublicId, page, size))
                                 .build();
         }
 

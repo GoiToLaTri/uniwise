@@ -41,13 +41,19 @@ public class CourseSearchServiceImpl implements CourseSearchService {
     @Override
     @PreAuthorize("hasAuthority('search:all-course')")
     public PageResponse<CourseSearchResponse> searchCourses(String keyword, int page, int size) {
-        return searchCourses(keyword, null, null, page, size);
+        return searchCourses(keyword, null, null, null, page, size);
     }
 
     @Override
-    public PageResponse<CourseSearchResponse> searchPublishedCourses(String keyword, int page, int size) {
+    public PageResponse<CourseSearchResponse> searchPublishedCourses(
+            String keyword, String instructorPublicId, int page, int size) {
+        String normalizedInstructorPublicId = normalize(instructorPublicId);
+
         // Chỉ cache trang đầu tiên (page == 0) và khi không có từ khóa tìm kiếm
-        if ((keyword == null || keyword.trim().isEmpty()) && page == 0) {
+        // hoặc bộ lọc theo giảng viên.
+        if ((keyword == null || keyword.trim().isEmpty())
+                && normalizedInstructorPublicId == null
+                && page == 0) {
             String cacheKey = "search_courses::published:v2:page:" + page + ":size:" + size;
 
             // 1. Check Redis
@@ -59,7 +65,8 @@ public class CourseSearchServiceImpl implements CourseSearchService {
             }
 
             // 2. Query ES
-            PageResponse<CourseSearchResponse> result = searchCourses(keyword, "PUBLISHED", null, page, size);
+            PageResponse<CourseSearchResponse> result =
+                    searchCourses(keyword, "PUBLISHED", null, null, page, size);
 
             // 3. Save to Redis
             if (result != null) {
@@ -67,7 +74,8 @@ public class CourseSearchServiceImpl implements CourseSearchService {
             }
             return result;
         }
-        return searchCourses(keyword, "PUBLISHED", null, page, size);
+        return searchCourses(
+                keyword, "PUBLISHED", null, normalizedInstructorPublicId, page, size);
     }
 
     @Override
@@ -75,7 +83,7 @@ public class CourseSearchServiceImpl implements CourseSearchService {
     public PageResponse<CourseSearchResponse> searchCreatorCourses(
             String keyword, String status, String creatorId, int page, int size) {
         // KHÔNG cache kết quả của từng creator để tránh đầy bộ nhớ Redis
-        return searchCourses(keyword, status, creatorId, page, size);
+        return searchCourses(keyword, status, creatorId, null, page, size);
     }
 
     /**
@@ -86,12 +94,13 @@ public class CourseSearchServiceImpl implements CourseSearchService {
      * @param status    Trạng thái khóa học (ví dụ: "PUBLISHED", "DRAFT"). Nếu null
      *                  sẽ bỏ qua điều kiện trạng thái
      * @param creatorId ID của người tạo khóa học (có thể rỗng)
-     * @param page      Số thứ tự trang (0-indexed)
-     * @param size      Số lượng phần tử trên mỗi trang
+     * @param instructorPublicId public ID của giảng viên (có thể rỗng)
+     * @param page               Số thứ tự trang (0-indexed)
+     * @param size               Số lượng phần tử trên mỗi trang
      * @return PageResponse chứa danh sách khóa học và thông tin phân trang
      */
     private PageResponse<CourseSearchResponse> searchCourses(
-            String keyword, String status, String creatorId, int page,
+            String keyword, String status, String creatorId, String instructorPublicId, int page,
             int size) {
         Pageable pageable = PageRequest.of(page, size);
 
@@ -139,6 +148,13 @@ public class CourseSearchServiceImpl implements CourseSearchService {
                         .field("creatorId.keyword")
                         .value(creatorId)));
             }
+
+            // Public ID là định danh an toàn để lọc các khóa học của một giảng viên.
+            if (instructorPublicId != null) {
+                b.filter(f -> f.term(t -> t
+                        .field("instructorPublicId.keyword")
+                        .value(instructorPublicId)));
+            }
             return b;
         }));
 
@@ -162,6 +178,10 @@ public class CourseSearchServiceImpl implements CourseSearchService {
                 .totalPages((int) Math.ceil((double) searchHits.getTotalHits() / size))
                 .last((page + 1) * size >= searchHits.getTotalHits())
                 .build();
+    }
+
+    private String normalize(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private CourseSearchResponse toResponse(CourseDocument document) {

@@ -3,8 +3,9 @@ package com.uniwise.user_service.modules.instructor;
 import com.uniwise.common.dto.request.InstructorProfileCreateRequest;
 import com.uniwise.common.dto.request.InstructorProfileUpdateRequest;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
+import com.uniwise.common.dto.response.InstructorSearchReindexResponse;
 import com.uniwise.common.dto.response.PageResponse;
-import com.uniwise.common.dto.response.PublicInstructorSearchResponse;
+import com.uniwise.common.dto.response.PublicInstructorProfileResponse;
 import com.uniwise.user_service.modules.instructor.enums.EInstructorProfileStatus;
 
 public interface InstructorService {
@@ -14,7 +15,7 @@ public interface InstructorService {
 
     InstructorProfileResponse updateMyInstructorProfile(InstructorProfileUpdateRequest request);
 
-    PublicInstructorSearchResponse getPublicInstructorProfile(String publicId);
+    PublicInstructorProfileResponse getPublicInstructorProfile(String publicId);
 
     InstructorProfileResponse getInstructorProfileByAccountId(String accountId);
 
@@ -28,4 +29,6 @@ public interface InstructorService {
 
     PageResponse<InstructorProfileResponse> listApplicationsByStatus(EInstructorProfileStatus status, int page,
             int size);
+
+    InstructorSearchReindexResponse reindexInstructorSearch(int page, int size);
 }

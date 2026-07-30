@@ -22,8 +22,9 @@ import com.uniwise.common.dto.request.ProfileUpdateRequest;
 import com.uniwise.common.dto.response.DegreeDto;
 import com.uniwise.common.dto.response.ExpertiseDto;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
+import com.uniwise.common.dto.response.InstructorSearchReindexResponse;
 import com.uniwise.common.dto.response.PageResponse;
-import com.uniwise.common.dto.response.PublicInstructorSearchResponse;
+import com.uniwise.common.dto.response.PublicInstructorProfileResponse;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.InstructorError;
 import com.uniwise.grpc_spring_boot_starter.annotation.GrpcClient;
@@ -52,6 +53,8 @@ import lombok.extern.slf4j.Slf4j;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class InstructorServiceImpl implements InstructorService {
+    private static final int MAX_REINDEX_PAGE_SIZE = 500;
+
     InstructorProfileRepository instructorProfileRepository;
     InstructorMapper instructorMapper;
     ProfileService profileService;
@@ -129,10 +132,10 @@ public class InstructorServiceImpl implements InstructorService {
 
     @Override
     @Transactional(readOnly = true)
-    public PublicInstructorSearchResponse getPublicInstructorProfile(String publicId) {
+    public PublicInstructorProfileResponse getPublicInstructorProfile(String publicId) {
         return instructorProfileRepository
                 .findByProfilePublicIdAndStatus(publicId, EInstructorProfileStatus.APPROVED)
-                .map(instructorMapper::toPublicSearchResponse)
+                .map(instructorMapper::toPublicProfileResponse)
                 .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));
     }
 
@@ -285,6 +288,36 @@ public class InstructorServiceImpl implements InstructorService {
                 .totalElements(instructorPage.getTotalElements())
                 .totalPages(instructorPage.getTotalPages())
                 .last(instructorPage.isLast())
+                .build();
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('search:all-instructor')")
+    @Transactional(readOnly = true)
+    public InstructorSearchReindexResponse reindexInstructorSearch(int page, int size) {
+        int normalizedPage = Math.max(0, page);
+        int normalizedSize = Math.min(Math.max(1, size), MAX_REINDEX_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(
+                normalizedPage,
+                normalizedSize,
+                Sort.by(Sort.Direction.ASC, "id"));
+
+        // Phân trang theo ID trước để tránh phân trang trực tiếp trên nhiều collection fetch.
+        Page<String> idPage = instructorProfileRepository.findIdsForSearchReindex(pageable);
+        List<InstructorProfile> profiles = idPage.isEmpty()
+                ? List.of()
+                : instructorProfileRepository.findAllForSearchReindex(idPage.getContent());
+
+        // Event dùng cùng document ID nên chạy lại trang này chỉ upsert, không tạo bản ghi trùng.
+        profiles.forEach(instructorSearchEventPublisher::publish);
+
+        return InstructorSearchReindexResponse.builder()
+                .processedElements(profiles.size())
+                .pageNumber(idPage.getNumber())
+                .pageSize(idPage.getSize())
+                .totalElements(idPage.getTotalElements())
+                .totalPages(idPage.getTotalPages())
+                .last(idPage.isLast())
                 .build();
     }
 

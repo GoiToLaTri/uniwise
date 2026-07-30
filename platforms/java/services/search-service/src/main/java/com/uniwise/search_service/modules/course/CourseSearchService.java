@@ -9,7 +9,8 @@ import com.uniwise.search_service.modules.course.dto.CourseSearchResponse;
 public interface CourseSearchService {
     PageResponse<CourseSearchResponse> searchCourses(String keyword, int page, int size);
 
-    PageResponse<CourseSearchResponse> searchPublishedCourses(String keyword, int page, int size);
+    PageResponse<CourseSearchResponse> searchPublishedCourses(
+            String keyword, String instructorPublicId, int page, int size);
 
     PageResponse<CourseSearchResponse> searchCreatorCourses(
             String keyword, String status, String creatorId, int page, int size);

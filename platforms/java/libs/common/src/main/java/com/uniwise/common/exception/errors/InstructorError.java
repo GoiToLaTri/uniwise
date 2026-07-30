@@ -18,7 +18,11 @@ public enum InstructorError implements ErrorDefinition {
     INSTRUCTOR_PROFILE_ALREADY_APPROVED("INS_007", "Instructor profile is already approved", HttpStatus.BAD_REQUEST),
     INSTRUCTOR_PROFILE_ALREADY_REJECTED("INS_008", "Instructor profile is already rejected", HttpStatus.BAD_REQUEST),
     INSTRUCTOR_PROFILE_ALREADY_SUSPENDED("INS_009", "Instructor profile is already suspended", HttpStatus.BAD_REQUEST),
-    INSTRUCTOR_PROFILE_ALREADY_REACTIVATED("INS_010", "Instructor profile is already reactivated", HttpStatus.BAD_REQUEST)
+    INSTRUCTOR_PROFILE_ALREADY_REACTIVATED("INS_010", "Instructor profile is already reactivated", HttpStatus.BAD_REQUEST),
+    INSTRUCTOR_STATUS_INVALID(
+            "INS_011",
+            "Invalid instructor status. Expected PENDING, APPROVED, REJECTED or SUSPENDED",
+            HttpStatus.BAD_REQUEST)
     ;
 
     String code;

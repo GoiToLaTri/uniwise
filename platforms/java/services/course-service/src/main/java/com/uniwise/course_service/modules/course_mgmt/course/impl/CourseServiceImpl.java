@@ -250,13 +250,18 @@ public class CourseServiceImpl implements CourseService {
     @Transactional(readOnly = true)
     public PageResponse<CourseResponse> getAll(
             int page, int size,
-            String creatorId, String status, String keyword,
+            String creatorId, String instructorPublicId, String status, String keyword,
             String sortBy, String sortDir) {
 
-        log.info("Listing courses - page={}, size={}, creatorId={}, status={}, keyword='{}'", page, size, creatorId,
-                status, keyword);
+        log.info(
+                "Listing courses - page={}, size={}, creatorId={}, instructorPublicId={}, status={}, keyword='{}'",
+                page, size, creatorId, instructorPublicId, status, keyword);
 
         String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+        String normalizedInstructorPublicId =
+                (instructorPublicId == null || instructorPublicId.isBlank())
+                        ? null
+                        : instructorPublicId.trim();
         String orderBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
         Sort.Direction direction = "desc".equalsIgnoreCase(sortDir) ? Sort.Direction.DESC : Sort.Direction.ASC;
 
@@ -274,7 +279,8 @@ public class CourseServiceImpl implements CourseService {
             }
         }
 
-        Page<Course> pageResult = courseRepository.searchCourses(creatorId, statusEnum, normalizedKeyword, pageable);
+        Page<Course> pageResult = courseRepository.searchCourses(
+                creatorId, normalizedInstructorPublicId, statusEnum, normalizedKeyword, pageable);
 
         return PageResponse.<CourseResponse>builder()
                 .content(pageResult.getContent().stream()
@@ -344,7 +350,7 @@ public class CourseServiceImpl implements CourseService {
             String sortBy, String sortDir) {
         String currentAccountId = getCurrentAccountId();
         log.info("Fetching my courses for accountId: {}", currentAccountId);
-        return getAll(page, size, currentAccountId, status, keyword, sortBy, sortDir);
+        return getAll(page, size, currentAccountId, null, status, keyword, sortBy, sortDir);
     }
 
     @Override

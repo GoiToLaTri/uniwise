@@ -41,4 +41,13 @@ public interface InstructorProfileRepository extends JpaRepository<InstructorPro
 
     @Query("SELECT i FROM InstructorProfile i WHERE (:status IS NULL OR :status = '' OR i.status = :status)")
     Page<InstructorProfile> findAllByStatus(@Param("status") EInstructorProfileStatus status, Pageable pageable);
+
+    @Query(
+            value = "SELECT i.id FROM InstructorProfile i",
+            countQuery = "SELECT COUNT(i) FROM InstructorProfile i")
+    Page<String> findIdsForSearchReindex(Pageable pageable);
+
+    @EntityGraph(attributePaths = { "profile", "degrees", "expertises" })
+    @Query("SELECT DISTINCT i FROM InstructorProfile i WHERE i.id IN :ids")
+    List<InstructorProfile> findAllForSearchReindex(@Param("ids") List<String> ids);
 }

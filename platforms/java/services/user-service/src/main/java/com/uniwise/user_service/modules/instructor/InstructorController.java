@@ -19,8 +19,9 @@ import com.uniwise.common.dto.request.InstructorProfileUpdateRequest;
 import com.uniwise.common.dto.request.InstructorReviewRequest;
 import com.uniwise.common.dto.response.ApiResponse;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
+import com.uniwise.common.dto.response.InstructorSearchReindexResponse;
 import com.uniwise.common.dto.response.PageResponse;
-import com.uniwise.common.dto.response.PublicInstructorSearchResponse;
+import com.uniwise.common.dto.response.PublicInstructorProfileResponse;
 import com.uniwise.user_service.modules.instructor.enums.EInstructorProfileStatus;
 
 import lombok.AccessLevel;
@@ -74,8 +75,8 @@ public class InstructorController {
     }
 
     @GetMapping("/public/{publicId}")
-    public ApiResponse<PublicInstructorSearchResponse> getPublicInstructorProfile(@PathVariable String publicId) {
-        return ApiResponse.<PublicInstructorSearchResponse>builder()
+    public ApiResponse<PublicInstructorProfileResponse> getPublicInstructorProfile(@PathVariable String publicId) {
+        return ApiResponse.<PublicInstructorProfileResponse>builder()
                 .code("OK")
                 .data(instructorService.getPublicInstructorProfile(publicId))
                 .message("Get public instructor profile success")
@@ -94,6 +95,18 @@ public class InstructorController {
                 .code("OK")
                 .data(instructorService.listApplicationsByStatus(profileStatus, page, size))
                 .message("List instructor applications success")
+                .build();
+    }
+
+    @PostMapping("/maintenance/search/reindex")
+    @PreAuthorize("hasAuthority('search:all-instructor')")
+    public ApiResponse<InstructorSearchReindexResponse> reindexInstructorSearch(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "100") int size) {
+        return ApiResponse.<InstructorSearchReindexResponse>builder()
+                .code("OK")
+                .data(instructorService.reindexInstructorSearch(page, size))
+                .message("Instructor search reindex events published")
                 .build();
     }
 

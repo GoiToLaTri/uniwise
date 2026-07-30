@@ -31,10 +31,12 @@ public interface CourseRepository extends JpaRepository<Course, String> {
     @Query("SELECT c FROM Course c WHERE " +
             "c.isActive = true " +
             "AND (:creatorId IS NULL OR c.creatorId = :creatorId) " +
+            "AND (:instructorPublicId IS NULL OR c.instructorPublicId = :instructorPublicId) " +
             "AND (:status IS NULL OR c.status = :status) " +
             "AND (:keyword IS NULL OR LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     Page<Course> searchCourses(
             @Param("creatorId") String creatorId,
+            @Param("instructorPublicId") String instructorPublicId,
             @Param("status") ECourseStatus status,
             @Param("keyword") String keyword,
             Pageable pageable);
