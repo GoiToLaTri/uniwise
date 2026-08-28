@@ -1,0 +1,16 @@
+# Tự động chuẩn hóa line ending, mặc định dùng LF cho mọi text file
+* text=auto eol=lf
+
+# Đảm bảo các file Windows-only (nếu có) giữ CRLF đúng chuẩn
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Đánh dấu rõ các file binary, tránh Git can thiệp line ending
+*.jar binary
+*.class binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.zip binary
+*.pdf binary
