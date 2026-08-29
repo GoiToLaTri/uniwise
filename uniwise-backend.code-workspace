@@ -1,0 +1,57 @@
+{
+	"folders": [
+		{
+			"path": "platforms/java/services/identity-service"
+		},
+		{
+			"path": "platforms/java/services/user-service"
+		},
+		{
+			"path": "platforms/java/libs"
+		},
+		{
+			"path": "contracts"
+		},
+		{
+			"path": "gateway"
+		},
+		{
+			"path": "infrastructure"
+		},
+		{
+			"name": "course-service",
+			"path": "platforms/java/services/course-service"
+		},
+		{
+			"name": "media-service",
+			"path": "platforms/java/services/media-service"
+		},
+		{
+			"name": "ffmpeg-worker",
+			"path": "platforms/java/workers/ffmpeg-worker"
+		},
+		{
+			"path": "platforms/java/services/payment-service"
+		},
+		{
+			"name": "search-service",
+			"path": "platforms/java/services/search-service"
+		},
+		{
+			"path": ".devcontainer"
+		},
+		{
+			"path": "build"
+		}
+	],
+	"settings": {
+		"java.configuration.updateBuildConfiguration": "interactive",
+		"java.configuration.runtimes": [
+			{
+				"name": "JavaSE-21",
+				"path": "/usr/lib/jvm/java-21-openjdk-amd64",
+				"default": true
+			}
+		]
+	}
+}

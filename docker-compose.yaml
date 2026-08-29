@@ -347,7 +347,12 @@ volumes:
   minio_data:
   elasticsearch_data:
 
+# networks:
+#   uniwise:
+#     driver: bridge
+#     name: "uniwise"
+
 networks:
   uniwise:
-    driver: bridge
-    name: "uniwise"
+    external: true
+    name: uniwise-net
