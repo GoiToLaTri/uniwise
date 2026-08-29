@@ -36,12 +36,6 @@
 		{
 			"name": "search-service",
 			"path": "platforms/java/services/search-service"
-		},
-		{
-			"path": ".devcontainer"
-		},
-		{
-			"path": "build"
 		}
 	],
 	"settings": {
