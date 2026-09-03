@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e 
+set -e
 scriptPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" 
 echo ">>> Build local libraries..." 
 mvn -f "$scriptPath/platforms/java/libs/common/pom.xml" install -DskipTests 
