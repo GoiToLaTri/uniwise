@@ -58,6 +58,8 @@ services:
       - ./infrastructure/nginx/lua:/etc/nginx/lua:ro
       - ./certificates/private.pem:/usr/local/openresty/nginx/cert/private.pem:ro
       - ./certificates/public.pem:/usr/local/openresty/nginx/cert/public.pem:ro
+    depends_on:
+      - gateway
     networks:
       - uniwise
 
