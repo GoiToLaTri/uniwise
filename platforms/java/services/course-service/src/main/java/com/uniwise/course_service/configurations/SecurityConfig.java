@@ -40,6 +40,7 @@ public class SecurityConfig {
             new Endpoint("/api/v1/courses/*", HttpMethod.GET),
             new Endpoint("/api/v1/price-tiers", HttpMethod.GET),
             new Endpoint("/api/v1/price-tiers/*", HttpMethod.GET),
+            new Endpoint("/actuator/**", HttpMethod.GET)
     };
 
     @Bean

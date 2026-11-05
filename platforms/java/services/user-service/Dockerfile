@@ -61,8 +61,8 @@ USER spring:spring
 # EXPOSE 8000
 
 # Health check (tùy chọn, giúp orchestration như Docker Compose/K8s kiểm tra)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:8081/actuator/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:8081/user-service/actuator/health || exit 1
 
 # Lệnh chạy ứng dụng
 # - Xmx: giới hạn heap memory (tùy chỉnh theo server)

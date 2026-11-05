@@ -48,8 +48,8 @@ COPY --from=builder --chown=spring:spring /app/target/*.jar app.jar
 USER spring:spring
 
 # Health check (tùy chọn, giúp orchestration như Docker Compose/K8s kiểm tra)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:8083/actuator/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:8083/media-service/actuator/health || exit 1
 
 # Lệnh chạy ứng dụng
 ENTRYPOINT ["java", "-Xmx256m", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
