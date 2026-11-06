@@ -68,7 +68,7 @@ graph TD
 | Tầng / Thành phần | Công nghệ | Phiên bản | Vai trò |
 | :--- | :--- | :--- | :--- |
 | **Language & Core** | Java | **21** | Ngôn ngữ phát triển chính |
-| **Framework** | Spring Boot | **4.1.0** | Framework xây dựng ứng dụng (spring-boot-starter-parent) |
+| **Framework** | Spring Boot | **4.1.2** | Framework xây dựng ứng dụng (spring-boot-starter-parent) |
 | **API Gateway (biên)** | OpenResty (Nginx + Lua) | **1.0.0** | Chặn lọc yêu cầu từ biên, kiểm tra Access Token qua Redis |
 | **API Gateway (nội bộ)** | Spring Cloud Gateway | (managed by Spring Boot) | Định tuyến và phân phối request đến microservice |
 | **Communication (Đồng bộ — RPC)** | gRPC | **1.69.0** | Giao tiếp nội bộ nhanh và ổn định giữa các service |

@@ -94,6 +94,9 @@ services:
       - SPRING_THREADS_VIRTUAL_ENABLED=true
       - SPRING_MAIN_KEEP_ALIVE=true
       - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=true
+      - JWT_PUBLIC_KEY_PATH=file:/certificates/public.pem
+    volumes:
+      - ./certificates/public.pem:/certificates/public.pem:ro
     networks:
       - uniwise
     restart: unless-stopped
@@ -113,6 +116,9 @@ services:
       - SPRING_THREADS_VIRTUAL_ENABLED=true
       - SPRING_MAIN_KEEP_ALIVE=true
       - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=true
+      - JWT_PUBLIC_KEY_PATH=file:/certificates/public.pem
+    volumes:
+      - ./certificates/public.pem:/certificates/public.pem:ro
     networks:
       - uniwise
     restart: unless-stopped
@@ -136,6 +142,9 @@ services:
       - SPRING_MAIN_KEEP_ALIVE=true
       - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=true
       - SPRING_TASK_SCHEDULING_SIMPLE_CONCURRENCY_LIMIT=1
+      - JWT_PUBLIC_KEY_PATH=file:/certificates/public.pem
+    volumes:
+      - ./certificates/public.pem:/certificates/public.pem:ro
     networks:
       - uniwise
     restart: unless-stopped
@@ -160,6 +169,9 @@ services:
       - SPRING_THREADS_VIRTUAL_ENABLED=true
       - SPRING_MAIN_KEEP_ALIVE=true
       - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=false
+      - JWT_PUBLIC_KEY_PATH=file:/certificates/public.pem
+    volumes:
+      - ./certificates/public.pem:/certificates/public.pem:ro
     networks:
       - uniwise
     restart: unless-stopped
@@ -182,6 +194,9 @@ services:
       - SPRING_THREADS_VIRTUAL_ENABLED=true
       - SPRING_MAIN_KEEP_ALIVE=true
       - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=false
+      - JWT_PUBLIC_KEY_PATH=file:/certificates/public.pem
+    volumes:
+      - ./certificates/public.pem:/certificates/public.pem:ro
     networks:
       - uniwise
     restart: unless-stopped
@@ -227,6 +242,9 @@ services:
       - SERVER_PORT=8086
       - SPRING_THREADS_VIRTUAL_ENABLED=true
       - SPRING_MAIN_KEEP_ALIVE=true
+      - JWT_PUBLIC_KEY_PATH=file:/certificates/public.pem
+    volumes:
+      - ./certificates/public.pem:/certificates/public.pem:ro
     networks:
       - uniwise
     restart: unless-stopped
