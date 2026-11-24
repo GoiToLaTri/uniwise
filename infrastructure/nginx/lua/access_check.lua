@@ -197,7 +197,7 @@ local function main()
     
     -- STEP 2: Hash token để lookup trong Redis
     local token_hash = hash_token(auth_token)
-    ngx.log(ngx.INFO, "Token hash: ", token_hash)
+    ngx.log(ngx.DEBUG, "Token hash: ", token_hash)
     
     -- STEP 3: Kết nối Redis
     local red = redis_connect()
@@ -209,10 +209,14 @@ local function main()
     -- STEP 4: Lấy access token từ Redis
     local session_data, lookup_error = get_access_from_redis(red, token_hash)
     
-    -- Đóng kết nối Redis (dùng connection pool)
-    local ok, err = red:set_keepalive(10000, 100)
-    if not ok then
-        ngx.log(ngx.WARN, "Failed to set Redis keepalive: ", err)
+    -- Đóng kết nối Redis (chỉ đưa vào connection pool khi socket không lỗi)
+    if lookup_error == "redis_error" then
+        red:close()
+    else
+        local ok, err = red:set_keepalive(10000, 100)
+        if not ok then
+            ngx.log(ngx.WARN, "Failed to set Redis keepalive: ", err)
+        end
     end
     
     if not session_data then
@@ -229,8 +233,9 @@ local function main()
         return service_unavailable()
     end
     
-    -- STEP 6: Gán token đã ký vào header
+    -- STEP 6: Gán token đã ký vào header và xóa Authorization gốc
     ngx.req.set_header("X-Auth-Token", gateway_token)
+    ngx.req.clear_header("Authorization")
     
     ngx.log(ngx.INFO, "Gateway token attached. User: ", session_data.accountId)
 end
