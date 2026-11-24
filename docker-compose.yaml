@@ -101,7 +101,8 @@ services:
       - uniwise
     restart: unless-stopped
     depends_on:
-      - user-service
+      user-service:
+        condition: service_healthy
 
   user-service:
     build:
@@ -195,6 +196,9 @@ services:
       - SPRING_MAIN_KEEP_ALIVE=true
       - GRPC_SERVER_VIRTUAL_THREADS_ENABLED=false
       - JWT_PUBLIC_KEY_PATH=file:/certificates/public.pem
+      - VNPAY_TMN_CODE
+      - VNPAY_HASH_SECRET
+      - VNPAY_RETURN_URL
     volumes:
       - ./certificates/public.pem:/certificates/public.pem:ro
     networks:
