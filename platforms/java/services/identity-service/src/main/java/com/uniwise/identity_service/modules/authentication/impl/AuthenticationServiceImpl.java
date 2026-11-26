@@ -27,6 +27,7 @@ import com.uniwise.identity_service.modules.permission.entity.Permission;
 import com.uniwise.identity_service.modules.redis.RedisService;
 import com.uniwise.identity_service.modules.refreshtoken.RefreshTokenService;
 import com.uniwise.identity_service.modules.refreshtoken.entity.RefreshToken;
+import com.uniwise.identity_service.modules.role.entity.Role;
 import com.uniwise.identity_service.modules.session.SessionService;
 import com.uniwise.identity_service.modules.session.entity.Session;
 import com.uniwise.identity_service.modules.session.mapper.SessionMapper;
@@ -143,9 +144,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         @Override
         @Transactional
         public void logout(RefreshTokenRequest request) {
+                Instant now = Instant.now();
                 // 1. Tìm Refresh Token qua Hash
                 String hashedToken = TokenUtils.hash(request.getRefreshToken());
                 RefreshToken refreshToken = refreshTokenService.getByHash(hashedToken);
+
+                if (refreshToken.isCompromised() || refreshToken.isUsed())
+                        throw new HttpException(AuthError.TOKEN_INVALID);
+
+                if (refreshToken.getExpiryDate() == null || !refreshToken.getExpiryDate().isAfter(now))
+                        throw new HttpException(AuthError.TOKEN_EXPIRED);
 
                 Session session = refreshToken.getSession();
                 if (session == null || session.isRevoked())
@@ -194,6 +202,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                 || session.getExpiresAt() == null
                                 || !session.getExpiresAt().isAfter(now))
                         throw new HttpException(AuthError.SESSION_NOT_FOUND);
+
+                if (session.getAccount() == null || !Boolean.TRUE.equals(session.getAccount().getIsActive()))
+                        throw new HttpException(AuthError.ACCOUNT_DISABLED);
 
                 // All validation has passed; invalidate the old access token and consume the
                 // refresh token exactly once.
@@ -247,11 +258,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         private String buildScope(Account account) {
-                Set<String> roles = account.getRoles().stream()
+                List<Role> activeRoles = account.getRoles().stream()
+                                .filter(role -> Boolean.TRUE.equals(role.getIsActive()))
+                                .toList();
+
+                Set<String> roles = activeRoles.stream()
                                 .map(role -> "ROLE_" + role.getName())
                                 .collect(Collectors.toSet());
 
-                Set<String> permissions = account.getRoles().stream()
+                Set<String> permissions = activeRoles.stream()
                                 .flatMap(role -> role.getPermissions().stream())
                                 .map(Permission::getName)
                                 .collect(Collectors.toSet());

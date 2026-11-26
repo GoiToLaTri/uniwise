@@ -12,5 +12,9 @@ public interface SessionService {
 
     List<Session> revokeAllByAccountId(String accountId);
 
+    List<Session> findActiveByAccountId(String accountId);
+
+    List<Session> deleteAllByAccountId(String accountId);
+
     void deleteById(String sessionId);
 }

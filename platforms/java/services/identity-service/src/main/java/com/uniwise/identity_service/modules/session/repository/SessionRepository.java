@@ -17,4 +17,10 @@ public interface SessionRepository extends JpaRepository<Session, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM Session s WHERE s.account.id = :accountId AND s.isRevoked = false")
     List<Session> findActiveByAccountIdForUpdate(@Param("accountId") String accountId);
+
+    @Query("SELECT s FROM Session s WHERE s.account.id = :accountId AND s.isRevoked = false")
+    List<Session> findActiveByAccountId(@Param("accountId") String accountId);
+
+    @Query("SELECT s FROM Session s WHERE s.account.id = :accountId")
+    List<Session> findAllByAccountId(@Param("accountId") String accountId);
 }

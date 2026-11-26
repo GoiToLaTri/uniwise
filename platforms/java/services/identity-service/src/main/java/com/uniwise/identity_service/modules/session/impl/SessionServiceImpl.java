@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.uniwise.common.dto.response.SessionResponse;
+import com.uniwise.identity_service.modules.refreshtoken.RefreshTokenService;
 import com.uniwise.identity_service.modules.session.SessionService;
 import com.uniwise.identity_service.modules.session.entity.Session;
 import com.uniwise.identity_service.modules.session.mapper.SessionMapper;
@@ -23,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 public class SessionServiceImpl implements SessionService {
     SessionRepository sessionRepository;
     SessionMapper sessionMapper;
+    RefreshTokenService refreshTokenService;
 
     @Override
     public SessionResponse create(Session session) {
@@ -40,6 +42,20 @@ public class SessionServiceImpl implements SessionService {
         List<Session> activeSessions = sessionRepository.findActiveByAccountIdForUpdate(accountId);
         activeSessions.forEach(session -> session.setRevoked(true));
         return sessionRepository.saveAll(activeSessions);
+    }
+
+    @Override
+    public List<Session> findActiveByAccountId(String accountId) {
+        return sessionRepository.findActiveByAccountId(accountId);
+    }
+
+    @Override
+    @Transactional
+    public List<Session> deleteAllByAccountId(String accountId) {
+        List<Session> sessions = sessionRepository.findAllByAccountId(accountId);
+        sessions.forEach(session -> refreshTokenService.deleteBySessionId(session.getId()));
+        sessionRepository.deleteAll(sessions);
+        return sessions;
     }
 
     @Override

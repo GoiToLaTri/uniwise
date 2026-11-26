@@ -33,7 +33,8 @@ public class SecurityConfig {
     private static final Endpoint[] PUBLIC_ENDPOINTS = {
             new Endpoint("/v3/api-docs", HttpMethod.GET),
             new Endpoint("/api/v1/payments/vnpay-ipn", HttpMethod.GET),
-            new Endpoint("/actuator/**", HttpMethod.GET)
+            new Endpoint("/actuator/health", HttpMethod.GET),
+            new Endpoint("/actuator/health/**", HttpMethod.GET)
     };
 
     @Bean

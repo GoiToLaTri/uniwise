@@ -37,7 +37,8 @@ public class SecurityConfig {
             new Endpoint("/v3/api-docs", HttpMethod.GET),
             new Endpoint("/api/v1/profiles/public/{publicId}", HttpMethod.GET),
             new Endpoint("/api/v1/instructors/public/{publicId}", HttpMethod.GET),
-            new Endpoint("/actuator/**", HttpMethod.GET)
+            new Endpoint("/actuator/health", HttpMethod.GET),
+            new Endpoint("/actuator/health/**", HttpMethod.GET)
     };
 
     @Bean

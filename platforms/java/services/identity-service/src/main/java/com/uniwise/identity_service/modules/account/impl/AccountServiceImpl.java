@@ -1,6 +1,7 @@
 package com.uniwise.identity_service.modules.account.impl;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -15,6 +16,8 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.uniwise.common.dto.request.AccountCreateRequest;
 import com.uniwise.common.dto.request.AccountUpdateRequest;
@@ -160,9 +163,21 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public void delete(String id) {
         requireOwnerOrAdmin(id);
-        // TODO: Chặn Admin tự xóa chính mình
-        Account account = accountRepository.findById(id)
+        if (isCurrentUserAdmin() && Objects.equals(getCurrentAccountId(), id)) {
+            throw new HttpException(AuthError.ACCESS_DENIED);
+        }
+        Account account = accountRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new HttpException(AccountError.ACCOUNT_NOT_FOUND));
+
+        account.getRoles().forEach(role -> {
+            int currentCount = role.getUserCount() == null ? 0 : role.getUserCount();
+            role.setUserCount(Math.max(0, currentCount - 1));
+        });
+        account.getRoles().clear();
+
+        List<Session> deletedSessions = sessionService.deleteAllByAccountId(id);
+        deleteSessionKeysAfterCommit(deletedSessions);
+
         accountRepository.delete(account);
         log.info("Account deleted successfully with id: {}", id);
     }
@@ -171,7 +186,9 @@ public class AccountServiceImpl implements AccountService {
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public void toggleActive(String id) {
-        // TODO: Chặn Admin tự khóa tài khoản của chính mình
+        if (Objects.equals(getCurrentAccountId(), id)) {
+            throw new HttpException(AuthError.ACCESS_DENIED);
+        }
         Account account = accountRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new HttpException(AccountError.ACCOUNT_NOT_FOUND));
         boolean deactivating = Boolean.TRUE.equals(account.getIsActive());
@@ -180,12 +197,7 @@ public class AccountServiceImpl implements AccountService {
 
         if (deactivating) {
             List<Session> revokedSessions = sessionService.revokeAllByAccountId(id);
-            List<String> redisKeys = revokedSessions.stream()
-                    .flatMap(session -> Stream.of(
-                            "access:" + session.getToken(),
-                            "session:" + session.getId()))
-                    .toList();
-            redisService.deleteMultipleKey(redisKeys);
+            deleteSessionKeysAfterCommit(revokedSessions);
 
             // TODO(socket-force-logout): Phát sự kiện qua socket để buộc tất cả client
             // đang kết nối của Account này xóa credential và chuyển về màn hình đăng nhập.
@@ -209,16 +221,44 @@ public class AccountServiceImpl implements AccountService {
     }
 
     private void requireOwnerOrAdmin(String accountId) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated();
-        boolean isAdmin = isAuthenticated
-                && authentication.getAuthorities().stream()
-                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
-        boolean isOwner = isAuthenticated
-                && accountId.equals(authentication.getName());
+        boolean isAdmin = isCurrentUserAdmin();
+        boolean isOwner = Objects.equals(accountId, getCurrentAccountId());
 
         if (!isOwner && !isAdmin)
             throw new HttpException(AuthError.ACCESS_DENIED);
+    }
+
+    private String getCurrentAccountId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.isAuthenticated() ? authentication.getName() : null;
+    }
+
+    private boolean isCurrentUserAdmin() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+    }
+
+    private void deleteSessionKeysAfterCommit(List<Session> sessions) {
+        List<String> redisKeys = sessions.stream()
+                .flatMap(session -> Stream.of(
+                        "access:" + session.getToken(),
+                        "session:" + session.getId()))
+                .toList();
+        if (redisKeys.isEmpty()) {
+            return;
+        }
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    redisService.deleteMultipleKey(redisKeys);
+                }
+            });
+        } else {
+            redisService.deleteMultipleKey(redisKeys);
+        }
     }
 
     @Override
@@ -234,8 +274,11 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public AccountResponse revokeRoles(String id, Set<String> roleNames) {
-        // TODO: Thêm logic kiểm tra an toàn bảo mật (VD: Không cho phép Admin tự thu
-        // hồi quyền ADMIN của chính mình)
+        if (Objects.equals(getCurrentAccountId(), id)
+                && roleNames != null
+                && roleNames.stream().anyMatch(role -> "ADMIN".equalsIgnoreCase(role))) {
+            throw new HttpException(AuthError.ACCESS_DENIED);
+        }
         return accountRoleManager.revokeRoles(id, roleNames);
     }
 }

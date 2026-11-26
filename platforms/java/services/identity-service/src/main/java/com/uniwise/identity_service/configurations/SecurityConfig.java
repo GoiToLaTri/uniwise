@@ -39,7 +39,8 @@ public class SecurityConfig {
             new Endpoint("/api/v1/authentication/token", HttpMethod.POST),
             new Endpoint("/api/v1/authentication/refresh", HttpMethod.POST),
             new Endpoint("/api/v1/authentication/logout", HttpMethod.POST),
-            new Endpoint("/actuator/**", HttpMethod.GET)
+            new Endpoint("/actuator/health", HttpMethod.GET),
+            new Endpoint("/actuator/health/**", HttpMethod.GET)
     };
 
     @Bean

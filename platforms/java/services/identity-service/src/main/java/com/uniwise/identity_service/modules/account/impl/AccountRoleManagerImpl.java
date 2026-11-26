@@ -5,6 +5,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.uniwise.common.dto.response.AccountResponse;
 import com.uniwise.common.exception.HttpException;
@@ -14,8 +16,11 @@ import com.uniwise.identity_service.modules.account.AccountRoleManager;
 import com.uniwise.identity_service.modules.account.entity.Account;
 import com.uniwise.identity_service.modules.account.mapper.AccountMapper;
 import com.uniwise.identity_service.modules.account.repository.AccountRepository;
+import com.uniwise.identity_service.modules.redis.RedisService;
 import com.uniwise.identity_service.modules.role.RoleService;
 import com.uniwise.identity_service.modules.role.entity.Role;
+import com.uniwise.identity_service.modules.session.SessionService;
+import com.uniwise.identity_service.modules.session.entity.Session;
 
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
@@ -31,6 +36,8 @@ public class AccountRoleManagerImpl implements AccountRoleManager {
     AccountRepository accountRepository;
     AccountMapper accountMapper;
     RoleService roleService;
+    SessionService sessionService;
+    RedisService redisService;
 
     @Override
     @Transactional
@@ -53,6 +60,7 @@ public class AccountRoleManagerImpl implements AccountRoleManager {
         rolesToAdd.forEach(role -> role.setUserCount(currentUserCount(role) + 1));
         account.getRoles().addAll(rolesToAdd);
         Account updated = accountRepository.save(account);
+        invalidateAccessTokens(accountId);
         log.info("Roles {} assigned to account with id: {}",
                 rolesToAdd.stream().map(Role::getName).toList(), accountId);
         return accountMapper.toResponse(updated);
@@ -77,9 +85,31 @@ public class AccountRoleManagerImpl implements AccountRoleManager {
         rolesToRemove.forEach(role ->
                 role.setUserCount(Math.max(0, currentUserCount(role) - 1)));
         Account updated = accountRepository.save(account);
+        invalidateAccessTokens(accountId);
         log.info("Roles {} revoked from account with id: {}",
                 rolesToRemove.stream().map(Role::getName).toList(), accountId);
         return accountMapper.toResponse(updated);
+    }
+
+    private void invalidateAccessTokens(String accountId) {
+        List<String> accessKeys = sessionService.findActiveByAccountId(accountId).stream()
+                .map(Session::getToken)
+                .filter(token -> token != null && !token.isBlank())
+                .map(token -> "access:" + token)
+                .toList();
+        if (accessKeys.isEmpty()) {
+            return;
+        }
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    redisService.deleteMultipleKey(accessKeys);
+                }
+            });
+        } else {
+            redisService.deleteMultipleKey(accessKeys);
+        }
     }
 
     private Account getAccountForUpdate(String accountId) {
