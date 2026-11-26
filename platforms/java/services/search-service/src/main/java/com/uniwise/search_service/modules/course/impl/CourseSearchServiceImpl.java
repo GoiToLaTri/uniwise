@@ -35,6 +35,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class CourseSearchServiceImpl implements CourseSearchService {
 
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final ElasticsearchOperations elasticsearchOperations;
     private final RedisService redisService;
 
@@ -47,14 +49,16 @@ public class CourseSearchServiceImpl implements CourseSearchService {
     @Override
     public PageResponse<CourseSearchResponse> searchPublishedCourses(
             String keyword, String instructorPublicId, int page, int size) {
+        int normalizedPage = normalizePage(page);
+        int normalizedSize = normalizeSize(size);
         String normalizedInstructorPublicId = normalize(instructorPublicId);
 
         // Chỉ cache trang đầu tiên (page == 0) và khi không có từ khóa tìm kiếm
         // hoặc bộ lọc theo giảng viên.
         if ((keyword == null || keyword.trim().isEmpty())
                 && normalizedInstructorPublicId == null
-                && page == 0) {
-            String cacheKey = "search_courses::published:v2:page:" + page + ":size:" + size;
+                && normalizedPage == 0) {
+            String cacheKey = "search_courses::published:v2:page:" + normalizedPage + ":size:" + normalizedSize;
 
             // 1. Check Redis
             PageResponse<CourseSearchResponse> cached = redisService.getKey(cacheKey,
@@ -66,7 +70,7 @@ public class CourseSearchServiceImpl implements CourseSearchService {
 
             // 2. Query ES
             PageResponse<CourseSearchResponse> result =
-                    searchCourses(keyword, "PUBLISHED", null, null, page, size);
+                    searchCourses(keyword, "PUBLISHED", null, null, normalizedPage, normalizedSize);
 
             // 3. Save to Redis
             if (result != null) {
@@ -75,7 +79,7 @@ public class CourseSearchServiceImpl implements CourseSearchService {
             return result;
         }
         return searchCourses(
-                keyword, "PUBLISHED", null, normalizedInstructorPublicId, page, size);
+                keyword, "PUBLISHED", null, normalizedInstructorPublicId, normalizedPage, normalizedSize);
     }
 
     @Override
@@ -102,7 +106,9 @@ public class CourseSearchServiceImpl implements CourseSearchService {
     private PageResponse<CourseSearchResponse> searchCourses(
             String keyword, String status, String creatorId, String instructorPublicId, int page,
             int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        int normalizedPage = normalizePage(page);
+        int normalizedSize = normalizeSize(size);
+        Pageable pageable = PageRequest.of(normalizedPage, normalizedSize);
 
         // Bắt đầu xây dựng một Elasticsearch Boolean Query
         Query esQuery = Query.of(q -> q.bool(b -> {
@@ -175,9 +181,17 @@ public class CourseSearchServiceImpl implements CourseSearchService {
                 .pageNumber(pageable.getPageNumber())
                 .pageSize(pageable.getPageSize())
                 .totalElements(searchHits.getTotalHits())
-                .totalPages((int) Math.ceil((double) searchHits.getTotalHits() / size))
-                .last((page + 1) * size >= searchHits.getTotalHits())
+                .totalPages((int) Math.ceil((double) searchHits.getTotalHits() / normalizedSize))
+                .last((long) (normalizedPage + 1) * normalizedSize >= searchHits.getTotalHits())
                 .build();
+    }
+
+    private int normalizePage(int page) {
+        return Math.max(0, page);
+    }
+
+    private int normalizeSize(int size) {
+        return Math.min(Math.max(1, size), MAX_PAGE_SIZE);
     }
 
     private String normalize(String value) {
