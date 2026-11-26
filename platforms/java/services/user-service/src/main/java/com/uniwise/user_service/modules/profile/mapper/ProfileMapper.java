@@ -23,6 +23,7 @@ public interface ProfileMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "email", ignore = true)
     @Mapping(target = "accountId", ignore = true)
+    @Mapping(target = "profileType", ignore = true)
     void updateEntity(ProfileUpdateRequest request, @MappingTarget Profile profile);
 
     @Mapping(target = "profileType", source = "profileType")

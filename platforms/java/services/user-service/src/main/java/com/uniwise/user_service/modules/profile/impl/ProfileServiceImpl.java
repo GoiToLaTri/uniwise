@@ -16,6 +16,8 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.uniwise.common.dto.request.ProfileCreateRequest;
 import com.uniwise.common.dto.request.ProfileUpdateRequest;
@@ -164,6 +166,16 @@ public class ProfileServiceImpl implements ProfileService {
         return updateProfileForAccount(accountId, request);
     }
 
+    @Override
+    @Transactional
+    public ProfileResponse updateProfileTypeForInternalUse(String accountId, ProfileType profileType) {
+        Profile profile = profileRepository.findByAccountId(accountId)
+                .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
+        profile.setProfileType(profileType);
+        Profile saved = profileRepository.save(profile);
+        return profileMapper.toResponse(saved);
+    }
+
     private ProfileResponse updateProfileForAccount(String accountId, ProfileUpdateRequest request) {
         Profile profile = profileRepository.findByAccountId(accountId)
                 .orElseThrow(() -> new HttpException(ProfileError.PROFILE_NOT_FOUND));
@@ -183,17 +195,31 @@ public class ProfileServiceImpl implements ProfileService {
         if (!Objects.equals(previousPublicId, saved.getPublicId())
                 || !Objects.equals(previousName, saved.getName())
                 || !Objects.equals(previousAvatarUrl, saved.getAvatarUrl())) {
-            eventPublisher.publish(RoutingKeys.PROFILE_UPDATED, ProfileUpdatedEvent.builder()
+            ProfileUpdatedEvent event = ProfileUpdatedEvent.builder()
                     .accountId(saved.getAccountId())
                     .publicId(saved.getPublicId())
                     .name(saved.getName())
                     .avatarUrl(saved.getAvatarUrl())
-                    .build());
+                    .build();
+            publishProfileUpdatedAfterCommit(event);
 
             applicationEventPublisher.publishEvent(new ProfilePublicInfoChangedEvent(saved.getAccountId()));
         }
 
         return profileMapper.toResponse(saved);
+    }
+
+    private void publishProfileUpdatedAfterCommit(ProfileUpdatedEvent event) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            eventPublisher.publish(RoutingKeys.PROFILE_UPDATED, event);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                eventPublisher.publish(RoutingKeys.PROFILE_UPDATED, event);
+            }
+        });
     }
 
     private String getCurrentAccountId() {

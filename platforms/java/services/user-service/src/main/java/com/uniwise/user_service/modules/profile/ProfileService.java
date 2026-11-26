@@ -30,4 +30,6 @@ public interface ProfileService {
     ProfileResponse updateProfile(ProfileUpdateRequest request);
 
     ProfileResponse updateProfileByAccountId(String accountId, ProfileUpdateRequest request);
+
+    ProfileResponse updateProfileTypeForInternalUse(String accountId, ProfileType profileType);
 }

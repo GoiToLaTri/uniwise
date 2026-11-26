@@ -46,6 +46,8 @@ public class InstructorProfile {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "profile_id", referencedColumnName = "id", unique = true, nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     Profile profile;
 
     @Column(name = "public_id", nullable = false, unique = true, length = 100)
