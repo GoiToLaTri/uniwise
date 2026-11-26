@@ -7,12 +7,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.AuthError;
@@ -86,11 +89,17 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse createPayment(String accountId, String courseId, String ipAddress) {
         log.info("Creating payment request for accountId: {}, courseId: {}", accountId, courseId);
 
+        if (paymentRepository.existsByAccountIdAndCourseIdAndStatus(accountId, courseId, PaymentStatus.SUCCESS)) {
+            throw new HttpException(PaymentError.TRANSACTION_ALREADY_COMPLETED);
+        }
+
         // 1. Verify course existence and get price via gRPC
         GetCoursePriceResponse courseResponse;
         try {
-            courseResponse = courseServiceClient.getCoursePrice(
-                    GetCoursePriceRequest.newBuilder().setCourseId(courseId).build());
+            courseResponse = courseServiceClient
+                    .withDeadlineAfter(3, TimeUnit.SECONDS)
+                    .getCoursePrice(
+                            GetCoursePriceRequest.newBuilder().setCourseId(courseId).build());
         } catch (StatusRuntimeException e) {
             log.error("gRPC failure calling course-service", e);
             if (e.getStatus().getCode() == Status.Code.NOT_FOUND) {
@@ -104,6 +113,9 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         long price = courseResponse.getPrice();
+        if (price <= 0) {
+            throw new HttpException(PaymentError.COURSE_NOT_ACTIVE);
+        }
 
         // 2. Generate unique transaction reference code
         String txnRef = "TXN_" + UUID.randomUUID().toString().replaceAll("-", "").substring(0, 16);
@@ -145,11 +157,9 @@ public class PaymentServiceImpl implements PaymentService {
         // Thêm SecureHash vào cuối URL, KHÔNG thêm vào chuỗi hash
         String paymentUrl = vnpPayUrl + "?" + query + "&vnp_SecureHash=" + vnpSecureHash;
 
-        // === DEBUG: In chuỗi hash để so sánh ===
-        log.info("[VNPAY DEBUG] Hash data (createPayment): {}", query);
-        log.info("[VNPAY DEBUG] Computed SecureHash: {}", vnpSecureHash);
-
-        log.info("Created payment URL: {}", paymentUrl);
+        log.debug("[VNPAY DEBUG] Hash data (createPayment): {}", query);
+        log.debug("[VNPAY DEBUG] Computed SecureHash: {}", vnpSecureHash);
+        log.debug("Created payment URL for txnRef {}: {}", txnRef, paymentUrl);
 
         PaymentResponse response = paymentMapper.toResponse(saved);
         response.setPaymentUrl(paymentUrl);
@@ -159,39 +169,67 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public String processIpn(Map<String, String> requestParams) {
-        log.info("Processing VNPay IPN Callback with params: {}", requestParams);
+        if (requestParams == null || requestParams.isEmpty()) {
+            return "{\"RspCode\":\"97\",\"Message\":\"Invalid Checksum\"}";
+        }
+        log.info("Processing VNPay IPN Callback for txnRef: {}", requestParams.get("vnp_TxnRef"));
 
-        // 1. Verify checksum signature
+        // 1. Verify checksum signature (constant-time) and TMN code
         String vnpSecureHash = requestParams.get("vnp_SecureHash");
         Map<String, String> fields = new HashMap<>(requestParams);
         fields.remove("vnp_SecureHash");
         fields.remove("vnp_SecureHashType");
 
         String checkQuery = VnPayUtils.buildHashData(fields);
-        String calculatedHash = VnPayUtils.hmacSHA512(vnpHashSecret, checkQuery);
+        log.debug("[VNPAY DEBUG] Received vnp_SecureHash: {}", vnpSecureHash);
+        log.debug("[VNPAY DEBUG] Hash data (processIpn): {}", checkQuery);
 
-        // === DEBUG: In chuỗi hash để so sánh ===
-        log.info("[VNPAY DEBUG] Received vnp_SecureHash: {}", vnpSecureHash);
-        log.info("[VNPAY DEBUG] Hash data (processIpn): {}", checkQuery);
-        log.info("[VNPAY DEBUG] Calculated hash:        {}", calculatedHash);
-
-        if (!calculatedHash.equalsIgnoreCase(vnpSecureHash)) {
+        if (!VnPayUtils.verifySignature(vnpHashSecret, checkQuery, vnpSecureHash)) {
             log.error("VNPay Checksum verification failed!");
             return "{\"RspCode\":\"97\",\"Message\":\"Invalid Checksum\"}";
         }
 
-        // 2. Fetch pending transaction
+        String receivedTmnCode = requestParams.get("vnp_TmnCode");
+        if (!vnpTmnCode.equals(receivedTmnCode)) {
+            log.error("VNPay TMN code mismatch! Expected: {}, Received: {}", vnpTmnCode, receivedTmnCode);
+            return "{\"RspCode\":\"97\",\"Message\":\"Invalid Checksum\"}";
+        }
+
+        // 2. Fetch and lock pending transaction to serialize concurrent IPN callbacks
         String txnRef = requestParams.get("vnp_TxnRef");
-        Payment payment = paymentRepository.findByTxnRef(txnRef).orElse(null);
+        if (txnRef == null || txnRef.isBlank()) {
+            return "{\"RspCode\":\"01\",\"Message\":\"Order not found\"}";
+        }
+        Payment payment = paymentRepository.findByTxnRefForUpdate(txnRef).orElse(null);
         if (payment == null) {
             log.error("Transaction not found for TxnRef: {}", txnRef);
             return "{\"RspCode\":\"01\",\"Message\":\"Order not found\"}";
         }
 
-        // 3. Verify payment amount matches
-        long vnpAmount = Long.parseLong(requestParams.get("vnp_Amount")) / 100;
-        if (payment.getAmount().longValue() != vnpAmount) {
-            log.error("Amount mismatch! Expected: {}, Received: {}", payment.getAmount(), vnpAmount);
+        // 3. Verify payment amount matches exactly (amount * 100 == vnp_Amount)
+        String rawAmountStr = requestParams.get("vnp_Amount");
+        long rawVnpAmount;
+        try {
+            if (rawAmountStr == null || rawAmountStr.isBlank()) {
+                log.error("Missing vnp_Amount for TxnRef: {}", txnRef);
+                return "{\"RspCode\":\"04\",\"Message\":\"Invalid Amount\"}";
+            }
+            rawVnpAmount = Long.parseLong(rawAmountStr.trim());
+        } catch (NumberFormatException e) {
+            log.error("Invalid numeric vnp_Amount '{}' for TxnRef: {}", rawAmountStr, txnRef);
+            return "{\"RspCode\":\"04\",\"Message\":\"Invalid Amount\"}";
+        }
+
+        long expectedVnpAmount;
+        try {
+            expectedVnpAmount = Math.multiplyExact(payment.getAmount(), 100L);
+        } catch (ArithmeticException e) {
+            log.error("Payment amount overflow for TxnRef: {}", txnRef);
+            return "{\"RspCode\":\"04\",\"Message\":\"Invalid Amount\"}";
+        }
+
+        if (expectedVnpAmount != rawVnpAmount) {
+            log.error("Amount mismatch! Expected (x100): {}, Received: {}", expectedVnpAmount, rawVnpAmount);
             return "{\"RspCode\":\"04\",\"Message\":\"Invalid Amount\"}";
         }
 
@@ -201,19 +239,19 @@ public class PaymentServiceImpl implements PaymentService {
             return "{\"RspCode\":\"02\",\"Message\":\"Order already confirmed\"}";
         }
 
-        // 5. Update transaction status
+        // 5. Update transaction status & persist VNPay metadata
         String responseCode = requestParams.get("vnp_ResponseCode");
         String transactionStatus = requestParams.get("vnp_TransactionStatus");
+        payment.setVnpayTransactionNo(requestParams.get("vnp_TransactionNo"));
+        payment.setBankCode(requestParams.get("vnp_BankCode"));
+        payment.setPayDate(requestParams.get("vnp_PayDate"));
 
         if ("00".equals(responseCode) && "00".equals(transactionStatus)) {
             log.info("Payment SUCCESS for TxnRef: {}", txnRef);
             payment.setStatus(PaymentStatus.SUCCESS);
-            payment.setVnpayTransactionNo(requestParams.get("vnp_TransactionNo"));
-            payment.setBankCode(requestParams.get("vnp_BankCode"));
-            payment.setPayDate(requestParams.get("vnp_PayDate"));
             paymentRepository.save(payment);
 
-            // Publish message queue event
+            // Publish message queue event after DB commit
             PaymentCompletedEvent event = PaymentCompletedEvent.builder()
                     .paymentId(payment.getId())
                     .accountId(payment.getAccountId())
@@ -221,9 +259,7 @@ public class PaymentServiceImpl implements PaymentService {
                     .amount(payment.getAmount())
                     .completedAt(Instant.now())
                     .build();
-            eventPublisher.publish(Exchanges.EVENTS, RoutingKeys.PAYMENT_COMPLETED, event);
-            log.info("Published PaymentCompletedEvent to RabbitMQ");
-
+            publishPaymentCompletedAfterCommit(event);
         } else {
             log.warn("Payment FAILED for TxnRef: {}, responseCode: {}", txnRef, responseCode);
             payment.setStatus(PaymentStatus.FAILED);
@@ -231,6 +267,21 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         return "{\"RspCode\":\"00\",\"Message\":\"Confirm success\"}";
+    }
+
+    private void publishPaymentCompletedAfterCommit(PaymentCompletedEvent event) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            eventPublisher.publish(Exchanges.EVENTS, RoutingKeys.PAYMENT_COMPLETED, event);
+            log.info("Published PaymentCompletedEvent to RabbitMQ");
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                eventPublisher.publish(Exchanges.EVENTS, RoutingKeys.PAYMENT_COMPLETED, event);
+                log.info("Published PaymentCompletedEvent to RabbitMQ after commit");
+            }
+        });
     }
 
     @Override

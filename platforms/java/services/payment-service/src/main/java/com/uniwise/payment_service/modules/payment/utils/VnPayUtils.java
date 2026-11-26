@@ -2,6 +2,8 @@ package com.uniwise.payment_service.modules.payment.utils;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import javax.crypto.Mac;
@@ -13,10 +15,10 @@ public class VnPayUtils {
      * Tính toán HMAC-SHA512 từ key và data.
      */
     public static String hmacSHA512(String key, String data) {
+        if (key == null || key.isEmpty() || data == null) {
+            throw new IllegalArgumentException("key and data must not be null or empty");
+        }
         try {
-            if (key == null || data == null) {
-                throw new NullPointerException("key and data must not be null");
-            }
             Mac hmac512 = Mac.getInstance("HmacSHA512");
             SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
             hmac512.init(secretKey);
@@ -27,8 +29,21 @@ public class VnPayUtils {
             }
             return sb.toString();
         } catch (Exception ex) {
-            return "";
+            throw new IllegalStateException("Failed to calculate HMAC-SHA512 signature", ex);
         }
+    }
+
+    /**
+     * Xác thực chữ ký VNPay theo kiểu constant-time để chống timing attack và chặn chữ ký rỗng.
+     */
+    public static boolean verifySignature(String key, String hashData, String receivedHash) {
+        if (key == null || key.isBlank() || hashData == null || receivedHash == null || receivedHash.isBlank()) {
+            return false;
+        }
+        String calculated = hmacSHA512(key, hashData);
+        byte[] expectedBytes = calculated.toLowerCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8);
+        byte[] actualBytes = receivedHash.trim().toLowerCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8);
+        return MessageDigest.isEqual(expectedBytes, actualBytes);
     }
 
     /**
@@ -70,10 +85,6 @@ public class VnPayUtils {
      * VNPay dùng URLEncoder Java chuẩn nên khoảng trắng phải là '+', không phải '%20'.
      */
     public static String encodeValue(String value) {
-        try {
-            return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
-        } catch (Exception e) {
-            return "";
-        }
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 }
