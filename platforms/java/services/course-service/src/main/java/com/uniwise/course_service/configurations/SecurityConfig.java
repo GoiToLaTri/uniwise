@@ -35,7 +35,6 @@ public class SecurityConfig {
     // Định nghĩa các endpoint public ở đây
     private static final Endpoint[] PUBLIC_ENDPOINT = {
             new Endpoint("/v3/api-docs", HttpMethod.GET),
-            new Endpoint("/api/v1/profiles/public/{publicId}", HttpMethod.GET),
             new Endpoint("/api/v1/courses/published", HttpMethod.GET),
             new Endpoint("/api/v1/courses/*", HttpMethod.GET),
             new Endpoint("/api/v1/price-tiers", HttpMethod.GET),
@@ -52,6 +51,8 @@ public class SecurityConfig {
         httpSecurity
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> {
+                    // Phải đăng ký /courses/me trước wildcard /courses/*
+                    auth.requestMatchers(HttpMethod.GET, "/api/v1/courses/me").authenticated();
                     // Đăng ký các endpoint public
                     for (Endpoint endpoint : PUBLIC_ENDPOINT)
                         auth.requestMatchers(endpoint.method(), endpoint.path()).permitAll();

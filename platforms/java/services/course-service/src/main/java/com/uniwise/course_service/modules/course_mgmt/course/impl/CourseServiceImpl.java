@@ -15,11 +15,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.uniwise.common.dto.request.CourseCreateRequest;
 import com.uniwise.common.dto.request.CourseUpdateRequest;
@@ -123,8 +125,8 @@ public class CourseServiceImpl implements CourseService {
         Course saved = courseRepository.save(course);
         log.info("Course created successfully with id: {}, publicId: {}", saved.getId(), saved.getPublicId());
 
-        // 4. Publish Event
-        eventPublisher.publish(RoutingKeys.COURSE_CREATED, CourseCreatedEvent.builder()
+        // 4. Publish Event (sau khi DB commit)
+        publishAfterCommit(RoutingKeys.COURSE_CREATED, CourseCreatedEvent.builder()
                 .id(saved.getId())
                 .publicId(saved.getPublicId())
                 .title(saved.getTitle())
@@ -147,19 +149,21 @@ public class CourseServiceImpl implements CourseService {
     public CourseResponse getByPublicId(String publicId) {
         log.info("Fetching course by publicId: {}", publicId);
         Course course = getEntityByPublicId(publicId);
-        
-        CourseResponse response = courseMapper.toResponse(course);
-        
+
         String currentAccountId = getCurrentAccountId();
-        
-        boolean isCreator = course.getCreatorId() != null && course.getCreatorId().equals(currentAccountId);
+        boolean isCreator = !currentAccountId.isBlank() && Objects.equals(course.getCreatorId(), currentAccountId);
         boolean isAdmin = hasAdminAuthority();
         boolean isEnrolled = false;
 
-        if (currentAccountId != null && !currentAccountId.isBlank()) {
+        if (!currentAccountId.isBlank()) {
             isEnrolled = isCreator || isAdmin || learningProgressService.isEnrolled(currentAccountId, course.getId());
         }
-        
+
+        if (course.getStatus() != ECourseStatus.PUBLISHED && !isEnrolled) {
+            throw new HttpException(CourseError.COURSE_NOT_FOUND);
+        }
+
+        CourseResponse response = courseMapper.toResponse(course);
         response.setIsEnrolled(isEnrolled);
 
         int totalLessons = 0;
@@ -279,6 +283,13 @@ public class CourseServiceImpl implements CourseService {
             }
         }
 
+        boolean isAdmin = hasAdminAuthority();
+        String currentAccountId = getCurrentAccountId();
+        boolean isOwnerQuery = !currentAccountId.isBlank() && Objects.equals(creatorId, currentAccountId);
+        if (!isAdmin && !isOwnerQuery) {
+            statusEnum = ECourseStatus.PUBLISHED;
+        }
+
         Page<Course> pageResult = courseRepository.searchCourses(
                 creatorId, normalizedInstructorPublicId, statusEnum, normalizedKeyword, pageable);
 
@@ -336,8 +347,8 @@ public class CourseServiceImpl implements CourseService {
         courseRepository.save(course);
         log.info("Course soft deleted successfully with publicId: {}", publicId);
 
-        // Publish Event
-        eventPublisher.publish(RoutingKeys.COURSE_DELETED, CourseDeletedEvent.builder()
+        // Publish Event (sau khi DB commit)
+        publishAfterCommit(RoutingKeys.COURSE_DELETED, CourseDeletedEvent.builder()
                 .id(course.getId())
                 .build());
     }
@@ -459,10 +470,14 @@ public class CourseServiceImpl implements CourseService {
     }
 
     private String getCurrentAccountId() {
-        SecurityContext context = SecurityContextHolder.getContext();
-        return Optional.ofNullable(context.getAuthentication())
-                .map(authentication -> authentication.getName())
-                .orElse("");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken
+                || "anonymousUser".equals(authentication.getName())) {
+            return "";
+        }
+        return authentication.getName();
     }
 
     private PublicProfile getInstructorProfile(String accountId) {
@@ -499,7 +514,7 @@ public class CourseServiceImpl implements CourseService {
     }
 
     private void publishCourseUpdatedEvent(Course course) {
-        eventPublisher.publish(RoutingKeys.COURSE_UPDATED, CourseUpdatedEvent.builder()
+        publishAfterCommit(RoutingKeys.COURSE_UPDATED, CourseUpdatedEvent.builder()
                 .id(course.getId())
                 .publicId(course.getPublicId())
                 .creatorId(course.getCreatorId())
@@ -513,6 +528,19 @@ public class CourseServiceImpl implements CourseService {
                 .instructorAvatarUrl(course.getInstructorAvatarUrl())
                 .updatedAt(Instant.now())
                 .build());
+    }
+
+    private void publishAfterCommit(String routingKey, Object payload) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            eventPublisher.publish(routingKey, payload);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                eventPublisher.publish(routingKey, payload);
+            }
+        });
     }
 
     private void requireCreatorOrAdmin(Course course) {

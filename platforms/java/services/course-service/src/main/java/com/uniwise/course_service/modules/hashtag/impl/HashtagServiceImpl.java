@@ -37,6 +37,7 @@ public class HashtagServiceImpl implements HashtagService {
  
     // ===== CREATE =====
     @Override
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     @Transactional(rollbackFor = Exception.class)
     public HashtagResponse create(HashtagCreateRequest request) {
         // Normalize trước khi check để tránh duplicate do case
@@ -100,6 +101,7 @@ public class HashtagServiceImpl implements HashtagService {
  
     // ===== UPDATE =====
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional(rollbackFor = Exception.class)
     public HashtagResponse update(String id, HashtagUpdateRequest request) {
         Hashtag hashtag = getEntityById(id);
