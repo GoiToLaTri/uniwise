@@ -35,7 +35,9 @@ public class VideoUploadedConsumer {
                 log.warn("Lesson not found with publicId={} for video upload event", lessonId);
             });
         } catch (Exception e) {
-            log.error("Failed to process VideoUploadedEvent for lesson publicId={}", lessonId, e);
+            log.error("Failed to process VideoUploadedEvent for lesson publicId={}; rethrowing for retry/DLQ",
+                    lessonId, e);
+            throw e;
         }
     }
 }

@@ -51,7 +51,9 @@ public class VideoTranscodedConsumer {
                 log.warn("Lesson not found with publicId={} for transcoding completion", lessonId);
             });
         } catch (Exception e) {
-            log.error("Failed to process VideoTranscodedEvent for lesson publicId={}", lessonId, e);
+            log.error("Failed to process VideoTranscodedEvent for lesson publicId={}; rethrowing for retry/DLQ",
+                    lessonId, e);
+            throw e;
         }
     }
 }

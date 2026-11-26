@@ -33,7 +33,9 @@ public class PaymentCompletedConsumer {
             learningProgressService.enrollUser(accountId, courseId, true);
             log.info("Successfully enrolled user {} in course {} after payment", accountId, courseId);
         } catch (Exception e) {
-            log.error("Failed to enroll user {} in course {} on payment success", accountId, courseId, e);
+            log.error("Failed to enroll user {} in course {} on payment success; rethrowing for retry/DLQ",
+                    accountId, courseId, e);
+            throw e;
         }
     }
 }
