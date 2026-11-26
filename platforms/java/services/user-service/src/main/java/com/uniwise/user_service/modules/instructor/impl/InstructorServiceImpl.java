@@ -3,7 +3,9 @@ package com.uniwise.user_service.modules.instructor.impl;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -11,6 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -18,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.uniwise.common.dto.request.InstructorProfileCreateRequest;
 import com.uniwise.common.dto.request.InstructorProfileUpdateRequest;
-import com.uniwise.common.dto.request.ProfileUpdateRequest;
 import com.uniwise.common.dto.response.DegreeDto;
 import com.uniwise.common.dto.response.ExpertiseDto;
 import com.uniwise.common.dto.response.InstructorProfileResponse;
@@ -26,6 +28,7 @@ import com.uniwise.common.dto.response.InstructorSearchReindexResponse;
 import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.dto.response.PublicInstructorProfileResponse;
 import com.uniwise.common.exception.HttpException;
+import com.uniwise.common.exception.errors.AuthError;
 import com.uniwise.common.exception.errors.InstructorError;
 import com.uniwise.grpc_spring_boot_starter.annotation.GrpcClient;
 import com.uniwise.identity.account.v1.AccountServiceGrpc.AccountServiceBlockingStub;
@@ -41,6 +44,7 @@ import com.uniwise.user_service.modules.instructor.mapper.InstructorMapper;
 import com.uniwise.user_service.modules.instructor.repository.InstructorProfileRepository;
 import com.uniwise.user_service.modules.profile.ProfileService;
 import com.uniwise.user_service.modules.profile.entity.Profile;
+import com.uniwise.user_service.modules.profile.enums.ProfileType;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -104,6 +108,10 @@ public class InstructorServiceImpl implements InstructorService {
         InstructorProfile instructorProfile = instructorProfileRepository.findByAccountId(accountId)
                 .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));
 
+        if (instructorProfile.getStatus() == EInstructorProfileStatus.SUSPENDED) {
+            throw new HttpException(InstructorError.INSTRUCTOR_PROFILE_ALREADY_SUSPENDED);
+        }
+
         instructorMapper.updateEntity(request, instructorProfile);
 
         if (request.getDegrees() != null) {
@@ -114,7 +122,9 @@ public class InstructorServiceImpl implements InstructorService {
             replaceExpertises(instructorProfile, request.getExpertises());
         }
 
-        instructorProfile.setStatus(EInstructorProfileStatus.PENDING);
+        if (instructorProfile.getStatus() == EInstructorProfileStatus.REJECTED) {
+            instructorProfile.setStatus(EInstructorProfileStatus.PENDING);
+        }
 
         InstructorProfile saved = instructorProfileRepository.saveAndFlush(instructorProfile);
         instructorSearchEventPublisher.publish(saved);
@@ -125,6 +135,7 @@ public class InstructorServiceImpl implements InstructorService {
     @PreAuthorize("hasAuthority('instructor:get-by-account-id')")
     @Transactional(readOnly = true)
     public InstructorProfileResponse getInstructorProfileByAccountId(String accountId) {
+        requireOwnerOrInstructorAdmin(accountId);
         InstructorProfile instructorProfile = instructorProfileRepository.findByAccountId(accountId)
                 .orElseThrow(() -> new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_FOUND));
         return instructorMapper.toResponse(instructorProfile);
@@ -158,10 +169,9 @@ public class InstructorServiceImpl implements InstructorService {
         instructorProfile.setStatus(EInstructorProfileStatus.APPROVED);
         instructorProfile.setReviewComment(reviewComment);
         instructorProfile.setApprovedAt(LocalDateTime.now());
-        ProfileUpdateRequest profileUpdateRequest = ProfileUpdateRequest.builder()
-                .profileType("INSTRUCTOR")
-                .build();
-        profileService.updateProfileByAccountId(instructorProfile.getProfile().getAccountId(), profileUpdateRequest);
+        profileService.updateProfileTypeForInternalUse(
+                instructorProfile.getProfile().getAccountId(),
+                ProfileType.INSTRUCTOR);
 
         AssignRolesRequest assignRolesRequest = AssignRolesRequest.newBuilder()
                 .setAccountId(instructorProfile.getProfile().getAccountId())
@@ -169,7 +179,9 @@ public class InstructorServiceImpl implements InstructorService {
                 .build();
 
         // Gọi grpc set lại vai trò cho account
-        accountServiceClient.assignRoles(assignRolesRequest);
+        accountServiceClient
+                .withDeadlineAfter(3, TimeUnit.SECONDS)
+                .assignRoles(assignRolesRequest);
         // Response có thể dùng nếu cần kiểm tra trạng thái hoặc log
         log.info("Assigned role INSTRUCTOR to account {} via identity-service grpc", instructorProfile.getProfile().getAccountId());
 
@@ -218,6 +230,8 @@ public class InstructorServiceImpl implements InstructorService {
                 throw new HttpException(InstructorError.INSTRUCTOR_PROFILE_NOT_APPROVED);
             else if (instructorProfile.getStatus() == EInstructorProfileStatus.REJECTED)
                 throw new HttpException(InstructorError.INSTRUCTOR_PROFILE_ALREADY_REJECTED);
+            else if (instructorProfile.getStatus() == EInstructorProfileStatus.SUSPENDED)
+                throw new HttpException(InstructorError.INSTRUCTOR_PROFILE_ALREADY_SUSPENDED);
         }
 
         instructorProfile.setStatus(EInstructorProfileStatus.SUSPENDED);
@@ -229,7 +243,9 @@ public class InstructorServiceImpl implements InstructorService {
                 .setAccountId(instructorProfile.getProfile().getAccountId())
                 .addRoleNames("INSTRUCTOR")
                 .build();
-        accountServiceClient.revokeRoles(revokeRolesRequest);
+        accountServiceClient
+                .withDeadlineAfter(3, TimeUnit.SECONDS)
+                .revokeRoles(revokeRolesRequest);
 
         InstructorProfile saved = instructorProfileRepository.saveAndFlush(instructorProfile);
         instructorSearchEventPublisher.publish(saved);
@@ -264,7 +280,9 @@ public class InstructorServiceImpl implements InstructorService {
                 .setAccountId(instructorProfile.getProfile().getAccountId())
                 .addRoleNames("INSTRUCTOR")
                 .build();
-        accountServiceClient.assignRoles(assignRolesRequest);
+        accountServiceClient
+                .withDeadlineAfter(3, TimeUnit.SECONDS)
+                .assignRoles(assignRolesRequest);
     
         InstructorProfile saved = instructorProfileRepository.saveAndFlush(instructorProfile);
         instructorSearchEventPublisher.publish(saved);
@@ -357,6 +375,19 @@ public class InstructorServiceImpl implements InstructorService {
         return java.util.Optional.ofNullable(context.getAuthentication())
                 .map(authentication -> authentication.getName())
                 .orElseThrow(() -> new HttpException(InstructorError.UNAUTHENTICATED));
+    }
+
+    private void requireOwnerOrInstructorAdmin(String targetAccountId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated();
+        boolean isOwner = isAuthenticated && Objects.equals(targetAccountId, authentication.getName());
+        boolean isAdminOrReviewer = isAuthenticated && authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority())
+                        || "admin:all".equals(authority.getAuthority())
+                        || "instructor:get-all".equals(authority.getAuthority()));
+        if (!isOwner && !isAdminOrReviewer) {
+            throw new HttpException(AuthError.ACCESS_DENIED);
+        }
     }
 
     private String generatePublicId() {

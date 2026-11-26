@@ -22,6 +22,8 @@ import com.uniwise.common.dto.response.InstructorProfileResponse;
 import com.uniwise.common.dto.response.InstructorSearchReindexResponse;
 import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.dto.response.PublicInstructorProfileResponse;
+import com.uniwise.common.exception.HttpException;
+import com.uniwise.common.exception.errors.InstructorError;
 import com.uniwise.user_service.modules.instructor.enums.EInstructorProfileStatus;
 
 import lombok.AccessLevel;
@@ -89,8 +91,7 @@ public class InstructorController {
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size) {
-        EInstructorProfileStatus profileStatus = status == null ? null
-                : EInstructorProfileStatus.valueOf(status.toUpperCase());
+        EInstructorProfileStatus profileStatus = parseStatus(status);
         return ApiResponse.<PageResponse<InstructorProfileResponse>>builder()
                 .code("OK")
                 .data(instructorService.listApplicationsByStatus(profileStatus, page, size))
@@ -112,41 +113,56 @@ public class InstructorController {
 
     @PatchMapping("/applications/{publicId}/approve")
     public ApiResponse<InstructorProfileResponse> approveApplication(@PathVariable String publicId,
-            @RequestBody InstructorReviewRequest request) {
+            @RequestBody(required = false) @Valid InstructorReviewRequest request) {
+        String reviewComment = request == null ? null : request.getReviewComment();
         return ApiResponse.<InstructorProfileResponse>builder()
                 .code("OK")
-                .data(instructorService.approveInstructorProfile(publicId, request.getReviewComment()))
+                .data(instructorService.approveInstructorProfile(publicId, reviewComment))
                 .message("Approve instructor application success")
                 .build();
     }
 
     @PatchMapping("/applications/{publicId}/reject")
     public ApiResponse<InstructorProfileResponse> rejectApplication(@PathVariable String publicId,
-            @RequestBody InstructorReviewRequest request) {
+            @RequestBody(required = false) @Valid InstructorReviewRequest request) {
+        String reviewComment = request == null ? null : request.getReviewComment();
         return ApiResponse.<InstructorProfileResponse>builder()
                 .code("OK")
-                .data(instructorService.rejectInstructorProfile(publicId, request.getReviewComment()))
+                .data(instructorService.rejectInstructorProfile(publicId, reviewComment))
                 .message("Reject instructor application success")
                 .build();
     }
 
     @PatchMapping("/applications/{publicId}/suspend")
     public ApiResponse<InstructorProfileResponse> suspendApplication(@PathVariable String publicId,
-            @RequestBody InstructorReviewRequest request) {
+            @RequestBody(required = false) @Valid InstructorReviewRequest request) {
+        String reviewComment = request == null ? null : request.getReviewComment();
         return ApiResponse.<InstructorProfileResponse>builder()
                 .code("OK")
-                .data(instructorService.suspendInstructorProfile(publicId, request.getReviewComment()))
+                .data(instructorService.suspendInstructorProfile(publicId, reviewComment))
                 .message("Suspend instructor application success")
                 .build();
     }
 
     @PatchMapping("/applications/{publicId}/reactivate")
     public ApiResponse<InstructorProfileResponse> reactivateApplication(@PathVariable String publicId,
-            @RequestBody InstructorReviewRequest request) {
+            @RequestBody(required = false) @Valid InstructorReviewRequest request) {
+        String reviewComment = request == null ? null : request.getReviewComment();
         return ApiResponse.<InstructorProfileResponse>builder()
                 .code("OK")
-                .data(instructorService.reactivateInstructorProfile(publicId, request.getReviewComment()))
+                .data(instructorService.reactivateInstructorProfile(publicId, reviewComment))
                 .message("Reactivate instructor application success")
                 .build();
+    }
+
+    private EInstructorProfileStatus parseStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        try {
+            return EInstructorProfileStatus.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new HttpException(InstructorError.INSTRUCTOR_STATUS_INVALID);
+        }
     }
 }

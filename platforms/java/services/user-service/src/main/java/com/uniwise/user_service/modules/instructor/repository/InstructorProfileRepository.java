@@ -39,7 +39,7 @@ public interface InstructorProfileRepository extends JpaRepository<InstructorPro
     
     List<InstructorProfile> findAllByStatus(EInstructorProfileStatus status);
 
-    @Query("SELECT i FROM InstructorProfile i WHERE (:status IS NULL OR :status = '' OR i.status = :status)")
+    @Query("SELECT i FROM InstructorProfile i WHERE (:status IS NULL OR i.status = :status)")
     Page<InstructorProfile> findAllByStatus(@Param("status") EInstructorProfileStatus status, Pageable pageable);
 
     @Query(
