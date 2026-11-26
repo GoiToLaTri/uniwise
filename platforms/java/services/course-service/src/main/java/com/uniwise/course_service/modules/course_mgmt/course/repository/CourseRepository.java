@@ -70,4 +70,9 @@ public interface CourseRepository extends JpaRepository<Course, String> {
     @Transactional
     @Query(value = "UPDATE courses SET total_lessons = GREATEST(total_lessons - 1, 0) WHERE id = :courseId", nativeQuery = true)
     void decrementTotalLessons(@Param("courseId") String courseId);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE courses SET total_lessons = GREATEST(total_lessons - :amount, 0) WHERE id = :courseId", nativeQuery = true)
+    void decrementTotalLessonsByAmount(@Param("courseId") String courseId, @Param("amount") int amount);
 }

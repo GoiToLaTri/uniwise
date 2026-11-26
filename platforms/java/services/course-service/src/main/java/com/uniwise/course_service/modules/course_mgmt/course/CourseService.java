@@ -28,5 +28,6 @@ public interface CourseService {
     void decrementTotalSectionsAndQueueSync(String courseId);
     void incrementTotalLessonsAndQueueSync(String courseId);
     void decrementTotalLessonsAndQueueSync(String courseId);
+    void decrementTotalLessonsByAmountAndQueueSync(String courseId, int amount);
 }
 

@@ -39,4 +39,8 @@ public class CourseServiceHelper {
     public void decrementTotalLessonsAndQueueSync(String courseId) {
         applicationContext.getBean(CourseService.class).decrementTotalLessonsAndQueueSync(courseId);
     }
+
+    public void decrementTotalLessonsByAmountAndQueueSync(String courseId, int amount) {
+        applicationContext.getBean(CourseService.class).decrementTotalLessonsByAmountAndQueueSync(courseId, amount);
+    }
 }

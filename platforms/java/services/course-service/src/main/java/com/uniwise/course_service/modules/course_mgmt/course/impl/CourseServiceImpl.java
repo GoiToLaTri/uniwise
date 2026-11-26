@@ -469,6 +469,16 @@ public class CourseServiceImpl implements CourseService {
         courseSyncQueueRepository.insertIgnoreCourseId(courseId);
     }
 
+    @Override
+    @Transactional
+    public void decrementTotalLessonsByAmountAndQueueSync(String courseId, int amount) {
+        if (amount <= 0) {
+            return;
+        }
+        courseRepository.decrementTotalLessonsByAmount(courseId, amount);
+        courseSyncQueueRepository.insertIgnoreCourseId(courseId);
+    }
+
     private String getCurrentAccountId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null

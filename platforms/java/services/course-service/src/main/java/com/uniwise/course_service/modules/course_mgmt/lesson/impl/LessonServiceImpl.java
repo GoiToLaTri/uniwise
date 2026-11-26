@@ -1,13 +1,19 @@
 package com.uniwise.course_service.modules.course_mgmt.lesson.impl;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,9 +21,12 @@ import com.uniwise.common.dto.request.LessonCreateRequest;
 import com.uniwise.common.dto.request.LessonUpdateRequest;
 import com.uniwise.common.dto.response.LessonResponse;
 import com.uniwise.common.dto.response.PageResponse;
+import com.uniwise.common.enums.ECourseStatus;
 import com.uniwise.common.exception.HttpException;
+import com.uniwise.common.exception.errors.AuthError;
 import com.uniwise.common.exception.errors.LessonError;
 import com.uniwise.common.exception.errors.ValidationError;
+import com.uniwise.course_service.modules.course_mgmt.course.entity.Course;
 import com.uniwise.course_service.modules.course_mgmt.course.helper.CourseServiceHelper;
 import com.uniwise.course_service.modules.course_mgmt.lesson.LessonService;
 import com.uniwise.course_service.modules.course_mgmt.lesson.entity.Lesson;
@@ -25,6 +34,7 @@ import com.uniwise.course_service.modules.course_mgmt.lesson.mapper.LessonMapper
 import com.uniwise.course_service.modules.course_mgmt.lesson.repository.LessonRepository;
 import com.uniwise.course_service.modules.course_mgmt.section.entity.Section;
 import com.uniwise.course_service.modules.course_mgmt.section.repository.SectionRepository;
+import com.uniwise.course_service.modules.learning_progress.LearningProgressService;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +51,7 @@ public class LessonServiceImpl implements LessonService {
     SectionRepository sectionRepository;
     LessonMapper lessonMapper;
     CourseServiceHelper courseServiceHelper;
+    LearningProgressService learningProgressService;
 
     // ===== CREATE =====
     @Override
@@ -49,9 +60,10 @@ public class LessonServiceImpl implements LessonService {
     public LessonResponse create(LessonCreateRequest request) {
         log.info("Creating lesson with title: '{}' in section: '{}'", request.getTitle(), request.getSectionId());
 
-        // 1. Validation (Check Section exists)
+        // 1. Validation (Check Section exists & ownership)
         Section section = sectionRepository.findById(request.getSectionId())
                 .orElseThrow(() -> new HttpException(LessonError.SECTION_NOT_FOUND));
+        requireCreatorOrAdmin(section.getCourse());
 
         // 2. Mapping
         Lesson lesson = lessonMapper.toEntity(request);
@@ -65,7 +77,6 @@ public class LessonServiceImpl implements LessonService {
             Integer maxSortOrder = lessonRepository.findMaxSortOrderBySectionId(request.getSectionId());
             lesson.setSortOrder(maxSortOrder + 1);
         }
-        lesson.setId(UUID.randomUUID().toString());
 
         // Generate unique 16-character publicId if not provided by client
         String publicId = request.getPublicId();
@@ -81,7 +92,11 @@ public class LessonServiceImpl implements LessonService {
         lesson.setPublicId(publicId);
 
         lesson.setSection(section);
-        lesson.setStatus(Lesson.LessonStatus.PROCESSING); // default status is PROCESSING
+        if (lesson.getLessonType() == Lesson.LessonType.QUIZ) {
+            lesson.setStatus(Lesson.LessonStatus.READY);
+        } else {
+            lesson.setStatus(Lesson.LessonStatus.PROCESSING);
+        }
 
         // 3. Persist
         Lesson saved = lessonRepository.save(lesson);
@@ -104,7 +119,13 @@ public class LessonServiceImpl implements LessonService {
     @Transactional(readOnly = true)
     public LessonResponse getByPublicId(String publicId) {
         log.info("Fetching lesson by publicId: {}", publicId);
-        return lessonMapper.toResponse(getEntityByPublicId(publicId));
+        Lesson lesson = getEntityByPublicId(publicId);
+        Course course = lesson.getSection().getCourse();
+        boolean hasFullAccess = hasFullCourseAccess(course);
+        if (!isCourseVisibleToCaller(course, hasFullAccess)) {
+            throw new HttpException(LessonError.LESSON_NOT_FOUND);
+        }
+        return toMaskedResponse(lesson, hasFullAccess);
     }
 
     // ===== GET ALL (paginated/filtered) =====
@@ -117,6 +138,18 @@ public class LessonServiceImpl implements LessonService {
             String sortBy, String sortDir) {
 
         log.info("Listing lessons - page={}, size={}, sectionId={}, keyword='{}'", page, size, sectionId, keyword);
+
+        Map<String, Boolean> accessCache = new HashMap<>();
+        if (sectionId != null && !sectionId.isBlank()) {
+            Section section = sectionRepository.findById(sectionId)
+                    .orElseThrow(() -> new HttpException(LessonError.SECTION_NOT_FOUND));
+            Course course = section.getCourse();
+            boolean hasFullAccess = hasFullCourseAccess(course);
+            if (!isCourseVisibleToCaller(course, hasFullAccess)) {
+                throw new HttpException(LessonError.SECTION_NOT_FOUND);
+            }
+            accessCache.put(course.getId(), hasFullAccess);
+        }
 
         String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
         String orderBy = (sortBy == null || sortBy.isBlank()) ? "sortOrder" : sortBy;
@@ -150,10 +183,20 @@ public class LessonServiceImpl implements LessonService {
                 sectionId, normalizedKeyword, typeEnum, statusEnum, pageable
         );
 
+        List<LessonResponse> content = pageResult.getContent().stream()
+                .filter(lesson -> {
+                    Course course = lesson.getSection().getCourse();
+                    boolean hasFullAccess = accessCache.computeIfAbsent(course.getId(), id -> hasFullCourseAccess(course));
+                    return isCourseVisibleToCaller(course, hasFullAccess);
+                })
+                .map(lesson -> {
+                    boolean hasFullAccess = accessCache.getOrDefault(lesson.getSection().getCourse().getId(), false);
+                    return toMaskedResponse(lesson, hasFullAccess);
+                })
+                .toList();
+
         return PageResponse.<LessonResponse>builder()
-                .content(pageResult.getContent().stream()
-                        .map(lessonMapper::toResponse)
-                        .collect(Collectors.toList()))
+                .content(content)
                 .pageNumber(pageResult.getNumber())
                 .pageSize(pageResult.getSize())
                 .totalElements(pageResult.getTotalElements())
@@ -169,6 +212,7 @@ public class LessonServiceImpl implements LessonService {
     public LessonResponse update(String publicId, LessonUpdateRequest request) {
         log.info("Updating lesson with publicId: {}", publicId);
         Lesson lesson = getEntityByPublicId(publicId);
+        requireCreatorOrAdmin(lesson.getSection().getCourse());
 
         // Check if updating sort order
         if (request.getSortOrder() != null && !request.getSortOrder().equals(lesson.getSortOrder())) {
@@ -199,6 +243,7 @@ public class LessonServiceImpl implements LessonService {
     public void delete(String publicId) {
         log.info("Deleting lesson with publicId: {}", publicId);
         Lesson lesson = getEntityByPublicId(publicId);
+        requireCreatorOrAdmin(lesson.getSection().getCourse());
         String sectionId = lesson.getSection().getId();
         Integer deletedSortOrder = lesson.getSortOrder();
 
@@ -217,6 +262,10 @@ public class LessonServiceImpl implements LessonService {
     @Transactional(rollbackFor = Exception.class)
     public void reorder(String sectionId, com.uniwise.common.dto.request.ReorderRequest request) {
         log.info("Bulk reordering lessons in section: {}", sectionId);
+        Section section = sectionRepository.findById(sectionId)
+                .orElseThrow(() -> new HttpException(LessonError.SECTION_NOT_FOUND));
+        requireCreatorOrAdmin(section.getCourse());
+
         for (com.uniwise.common.dto.request.ReorderItemRequest item : request.getItems()) {
             Lesson lesson = lessonRepository.findByPublicId(item.getId())
                     .orElseThrow(() -> new HttpException(LessonError.LESSON_NOT_FOUND));
@@ -243,5 +292,70 @@ public class LessonServiceImpl implements LessonService {
     @Override
     public long countByCourseId(String courseId) {
         return lessonRepository.countByCourseId(courseId);
+    }
+
+    private LessonResponse toMaskedResponse(Lesson lesson, boolean hasFullAccess) {
+        LessonResponse response = lessonMapper.toResponse(lesson);
+        if (!hasFullAccess && !Boolean.TRUE.equals(lesson.getIsPreview())) {
+            response.setContentReference(null);
+        }
+        return response;
+    }
+
+    private boolean isCourseVisibleToCaller(Course course, boolean hasFullAccess) {
+        if (course == null || !Boolean.TRUE.equals(course.getIsActive())) {
+            return false;
+        }
+        return course.getStatus() == ECourseStatus.PUBLISHED || hasFullAccess;
+    }
+
+    private boolean hasFullCourseAccess(Course course) {
+        if (course == null) {
+            return false;
+        }
+        if (hasAdminAuthority()) {
+            return true;
+        }
+        String currentAccountId = getCurrentAccountId();
+        if (currentAccountId.isBlank()) {
+            return false;
+        }
+        if (Objects.equals(course.getCreatorId(), currentAccountId)) {
+            return true;
+        }
+        return learningProgressService.isEnrolled(currentAccountId, course.getId());
+    }
+
+    private void requireCreatorOrAdmin(Course course) {
+        boolean isAdmin = hasAdminAuthority();
+        String currentAccountId = getCurrentAccountId();
+        boolean isCreator = !currentAccountId.isBlank()
+                && course != null
+                && Objects.equals(course.getCreatorId(), currentAccountId);
+
+        if (!isCreator && !isAdmin) {
+            throw new HttpException(AuthError.ACCESS_DENIED);
+        }
+    }
+
+    private String getCurrentAccountId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken
+                || "anonymousUser".equals(authentication.getName())) {
+            return "";
+        }
+        return authentication.getName();
+    }
+
+    private boolean hasAdminAuthority() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority())
+                        || "admin:all".equals(authority.getAuthority()));
     }
 }
