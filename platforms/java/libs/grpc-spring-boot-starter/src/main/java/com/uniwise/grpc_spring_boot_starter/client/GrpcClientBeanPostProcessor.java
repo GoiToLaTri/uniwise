@@ -3,8 +3,10 @@ package com.uniwise.grpc_spring_boot_starter.client;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.util.ReflectionUtils;
 
@@ -13,10 +15,12 @@ import com.uniwise.grpc_spring_boot_starter.autoprops.GrpcClientProperties;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import lombok.extern.slf4j.Slf4j;
 
-public class GrpcClientBeanPostProcessor implements BeanPostProcessor {
+@Slf4j
+public class GrpcClientBeanPostProcessor implements BeanPostProcessor, DisposableBean {
     private final GrpcClientProperties clientProperties;
-    private final Map<String, ManagedChannel> channelCache = new ConcurrentHashMap<>();
+    final Map<String, ManagedChannel> channelCache = new ConcurrentHashMap<>();
 
     public GrpcClientBeanPostProcessor(GrpcClientProperties clientProperties) {
         this.clientProperties = clientProperties;
@@ -77,15 +81,36 @@ public class GrpcClientBeanPostProcessor implements BeanPostProcessor {
             // class cha (ServiceGrpc)
             Class<?> enclosingClass = stubClass.getEnclosingClass();
             String methodName = "newBlockingStub";
-            if (stubClass.getName().endsWith("FutureStub"))
+            if (stubClass.getName().endsWith("FutureStub")) {
                 methodName = "newFutureStub";
-            if (stubClass.getName().endsWith("Stub") && !stubClass.getName().contains("Blocking"))
+            } else if (stubClass.getName().endsWith("Stub") && !stubClass.getName().contains("Blocking")) {
                 methodName = "newStub";
+            }
 
             Method factoryMethod = enclosingClass.getMethod(methodName, io.grpc.Channel.class);
             return factoryMethod.invoke(null, channel);
         } catch (Exception e) {
             throw new RuntimeException("Could not create gRPC stub for " + stubClass.getName(), e);
         }
+    }
+
+    @Override
+    public void destroy() {
+        channelCache.forEach((name, channel) -> {
+            if (channel != null && !channel.isShutdown()) {
+                channel.shutdown();
+                try {
+                    if (!channel.awaitTermination(5, TimeUnit.SECONDS)) {
+                        log.warn("gRPC channel '{}' did not terminate within 5s, forcing shutdownNow()", name);
+                        channel.shutdownNow();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.warn("Interrupted while shutting down gRPC channel '{}', forcing shutdownNow()", name, e);
+                    channel.shutdownNow();
+                }
+            }
+        });
+        channelCache.clear();
     }
 }

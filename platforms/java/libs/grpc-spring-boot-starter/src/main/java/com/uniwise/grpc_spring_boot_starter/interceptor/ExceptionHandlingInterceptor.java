@@ -124,15 +124,16 @@ public class ExceptionHandlingInterceptor implements ServerInterceptor {
             log.warn("gRPC business error [{}]: code={}, status={}, msg={}", 
                      methodName, error.getCode(), httpStatus.value(), error.getMessage());
         } else if (e instanceof AccessDeniedException) {
-            status = Status.PERMISSION_DENIED.withDescription(e.getMessage()).withCause(e);
+            String message = e.getMessage() != null ? e.getMessage() : "Access denied";
+            status = Status.PERMISSION_DENIED.withDescription(message).withCause(e);
             trailers.put(ERROR_CODE_KEY, "AUTH_ACCESS_DENIED");
-            trailers.put(ERROR_MESSAGE_KEY, e.getMessage());
+            trailers.put(ERROR_MESSAGE_KEY, message);
             trailers.put(ERROR_STATUS_KEY, "403");
-            log.warn("gRPC access denied [{}]: {}", methodName, e.getMessage());
+            log.warn("gRPC access denied [{}]: {}", methodName, message);
         } else {
             status = Status.INTERNAL.withDescription("Internal server error").withCause(e);
             trailers.put(ERROR_CODE_KEY, "INTERNAL_SERVER_ERROR");
-            trailers.put(ERROR_MESSAGE_KEY, e.getMessage() != null ? e.getMessage() : "An unexpected error occurred");
+            trailers.put(ERROR_MESSAGE_KEY, "An unexpected error occurred");
             trailers.put(ERROR_STATUS_KEY, "500");
             log.error("gRPC unhandled exception [{}] headers={}: ", methodName, filterHeaders(headers), e);
         }
@@ -173,7 +174,10 @@ public class ExceptionHandlingInterceptor implements ServerInterceptor {
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;
         for (String keyName : headers.keys()) {
-            if (keyName.equalsIgnoreCase("authorization") || keyName.equalsIgnoreCase("token") || keyName.endsWith("-bin")) {
+            if (keyName.equalsIgnoreCase("authorization")
+                    || keyName.equalsIgnoreCase("token")
+                    || keyName.equalsIgnoreCase("x-auth-token")
+                    || keyName.endsWith("-bin")) {
                 continue;
             }
             if (!first) {
