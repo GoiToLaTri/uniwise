@@ -1,10 +1,13 @@
 package com.uniwise.search_service.modules.redis.impl;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -22,6 +25,9 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class RedisServiceImpl implements RedisService {
+    private static final long SCAN_COUNT = 200L;
+    private static final int DELETE_BATCH_SIZE = 100;
+
     RedisTemplate<String, String> template;
     ObjectMapper objectMapper;
 
@@ -85,10 +91,39 @@ public class RedisServiceImpl implements RedisService {
 
     @Override
     public void deleteKeysByPattern(String pattern) {
-        java.util.Set<String> keys = template.keys(pattern);
-        if (keys != null && !keys.isEmpty()) {
-            template.delete(keys);
-            log.info("Deleted {} keys matching pattern {}", keys.size(), pattern);
+        if (pattern == null || pattern.isBlank()) {
+            return;
+        }
+
+        ScanOptions options = ScanOptions.scanOptions()
+                .match(pattern)
+                .count(SCAN_COUNT)
+                .build();
+
+        int totalDeleted = 0;
+        List<String> batch = new ArrayList<>(DELETE_BATCH_SIZE);
+
+        try (Cursor<String> cursor = template.scan(options)) {
+            if (cursor == null) {
+                return;
+            }
+            while (cursor.hasNext()) {
+                batch.add(cursor.next());
+                if (batch.size() >= DELETE_BATCH_SIZE) {
+                    template.delete(List.copyOf(batch));
+                    totalDeleted += batch.size();
+                    batch.clear();
+                }
+            }
+        }
+
+        if (!batch.isEmpty()) {
+            template.delete(List.copyOf(batch));
+            totalDeleted += batch.size();
+        }
+
+        if (totalDeleted > 0) {
+            log.info("Deleted {} keys matching pattern {}", totalDeleted, pattern);
         }
     }
 }
