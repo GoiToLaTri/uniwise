@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 public class HttpException extends RuntimeException{
     ErrorDefinition error;
     public HttpException(ErrorDefinition error, Object ...arObjects){
+        super(error != null ? error.getMessage() : null);
         this.error = error;
     }
 }

@@ -17,7 +17,6 @@ import org.springframework.web.server.ServerWebExchange;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uniwise.common.dto.response.ErrorResponse;
-import com.uniwise.common.exception.GlobalExceptionHandler;
 import com.uniwise.common.exception.errors.ErrorDefinition;
 import com.uniwise.common.exception.errors.GatewayError;
 
@@ -31,7 +30,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
-@ConditionalOnMissingBean(GlobalExceptionHandler.class)
+@ConditionalOnMissingBean(GatewayExceptionHandler.class)
 public class GatewayExceptionHandler implements ErrorWebExceptionHandler{
     ObjectMapper objectMapper;
 
@@ -63,7 +62,7 @@ public class GatewayExceptionHandler implements ErrorWebExceptionHandler{
         // 4. Build ErrorResponse (Ưu tiên message từ rsEx nếu có, không thì lấy từ Enum)
         ErrorResponse errorDetails = ErrorResponse.builder()
                 .timestamp(Instant.now())
-                .status(errorDef.getHttpStatus().value())
+                .status(status.value())
                 .code(errorDef.getCode())
                 .detail(dynamicMessage != null ? dynamicMessage : errorDef.getMessage())
                 .path(exchange.getRequest().getPath().value())
