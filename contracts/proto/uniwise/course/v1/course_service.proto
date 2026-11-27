@@ -12,6 +12,9 @@ service CourseGrpcService {
   rpc GetCoursePrice (GetCoursePriceRequest) returns (GetCoursePriceResponse);
   // Check if a user has access to a specific lesson
   rpc CheckLessonAccess (CheckLessonAccessRequest) returns (CheckLessonAccessResponse);
+  // Check whether a lesson is a valid upload target owned by an account
+  rpc CheckLessonUploadAuthorization (CheckLessonUploadAuthorizationRequest)
+      returns (CheckLessonUploadAuthorizationResponse);
 }
 
 message GetCoursePriceRequest {
@@ -32,4 +35,15 @@ message CheckLessonAccessRequest {
 
 message CheckLessonAccessResponse {
   bool has_access = 1;
+}
+
+message CheckLessonUploadAuthorizationRequest {
+  string account_id = 1;
+  string lesson_id = 2;
+}
+
+message CheckLessonUploadAuthorizationResponse {
+  bool lesson_exists = 1;
+  bool is_owner = 2;
+  bool is_video_lesson = 3;
 }
