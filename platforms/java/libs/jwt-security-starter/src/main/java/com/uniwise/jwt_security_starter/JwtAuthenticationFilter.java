@@ -41,14 +41,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String accountId = claims.getSubject();
                 String scopes = claims.get("scope", String.class);
 
-                if (accountId != null && scopes != null) {
+                if (accountId != null && !accountId.isBlank()) {
                     List<SimpleGrantedAuthority> authorities = parseScopes(scopes);
                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                             accountId, null, authorities);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
-            } else
-                log.info("No JWT token found in request");
+            } else {
+                log.debug("No JWT token found in request");
+            }
 
         } catch (Exception e) {
             log.error("Cannot set user authentication: {}", e.getMessage());

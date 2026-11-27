@@ -29,7 +29,7 @@ public class JwtService {
 
     // Cache public key để tránh đọc file mỗi lần
     @NonFinal
-    private PublicKey cachedPublicKey;
+    private volatile PublicKey cachedPublicKey;
 
     public Claims extractClaims(String token) {
         try {
