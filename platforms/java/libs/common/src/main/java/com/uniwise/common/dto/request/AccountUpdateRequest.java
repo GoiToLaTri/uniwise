@@ -21,7 +21,7 @@ public class AccountUpdateRequest {
     String name;
 
     @NotBlank(message = "PASSWORD_REQUIRED")
-    @Size(min = 4, message = "PASSWORD_INVALID")
+    @Size(min = 8, message = "PASSWORD_INVALID")
     String password;
 
     @NotBlank(message = "EMAIL_REQUIRED")
