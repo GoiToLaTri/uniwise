@@ -1,213 +1,152 @@
-# Uniwise Backend - Hệ thống E-learning Microservices
+# Uniwise
 
-Dự án **Uniwise Backend** là hệ thống máy chủ cung cấp nền tảng E-learning, được thiết kế theo kiến trúc Microservices hướng sự kiện nhằm cải thiện hiệu năng, khả năng mở rộng và tính bảo mật cho các tác vụ truyền tải video học trực tuyến.
+Backend nền tảng học trực tuyến (e-learning) xây dựng theo kiến trúc microservices hướng sự kiện. Hỗ trợ quản lý khóa học, thanh toán VNPay, ghi danh tự động, tìm kiếm toàn văn và chuyển mã video HLS.
 
----
+> Dự án cá nhân phục vụ mục đích học tập, chưa được thiết kế cho môi trường production (xem [Known limitations](#known-limitations)).
 
-## 1. Dự án giải quyết vấn đề gì? (Problem Statement)
-Hệ thống học trực tuyến (E-learning) hiện đại đối mặt với nhiều bài toán khó về hiệu năng, bảo mật và khả năng mở rộng:
-- **Tải trọng lớn khi xử lý Video**: Quá trình đăng tải và xử lý video dung lượng lớn (transcoding) tiêu tốn nhiều CPU và RAM. Nếu thực hiện đồng bộ trên máy chủ nghiệp vụ chính, hệ thống dễ bị quá tải, gây tắc nghẽn hoặc sập các tính năng khác (đăng nhập, mua khóa học, v.v.).
-- **Tìm kiếm dữ liệu lớn tốc độ cao (Full-text Search)**: Truy vấn tìm kiếm phức tạp trên CSDL quan hệ (MySQL) không tối ưu về tốc độ, không hỗ trợ tốt tìm kiếm mờ (fuzzy search) và dễ gây quá tải cho DB chính khi lượng người truy cập tăng đột biến.
-- **Tối ưu băng thông và Trải nghiệm người dùng**: Truyền phát tệp video thô (`.mp4`) gây tốn băng thông lớn và thời gian chờ tải lâu cho học viên (nhất là khi mạng yếu). Hệ thống cần hỗ trợ phát trực tuyến thích ứng (Adaptive Bitrate Streaming) để tự động điều chỉnh chất lượng theo tốc độ mạng.
-- **Bảo mật Nội dung**: Video bài giảng dễ bị tải lậu hoặc chia sẻ bất hợp pháp nếu đường dẫn video gốc hoặc lưu trữ bị lộ.
-- **Sự phụ thuộc lẫn nhau giữa các dịch vụ**: Hệ thống cần được thiết kế lỏng lẻo (loose coupling) để đảm bảo khi một dịch vụ gặp sự cố (ví dụ: quá tải upload media), các phần còn lại của ứng dụng vẫn hoạt động bình thường.
+| Tìm kiếm khóa học (Elasticsearch fuzzy search) | Trình phát bài giảng video HLS |
+|---|---|
+| ![Tìm kiếm khóa học](docs/images/search-keyword.png) | ![Trình phát bài giảng HLS](docs/images/learning-space.png) |
 
-**Giải pháp của Uniwise**:
-* **Kiến trúc Microservices**: Tách riêng các luồng nghiệp vụ thành các dịch vụ độc lập như Quản lý khóa học (`course-service`), Hồ sơ người dùng (`user-service`), Xác thực (`identity-service`), và Lưu trữ (`media-service`).
-* **Xử lý bất đồng bộ qua RabbitMQ & Worker chuyên biệt**: Khi giảng viên đăng tải video, tác vụ chuyển đổi định dạng (transcoding) được gửi qua RabbitMQ đến dịch vụ `ffmpeg-worker` hoạt động độc lập để xử lý ngầm, giúp giải phóng tài nguyên lập tức cho server nghiệp vụ.
-* **Đồng bộ dữ liệu & Tìm kiếm với Elasticsearch**: Sử dụng Elasticsearch lưu trữ index khóa học. Khi có thay đổi từ `course-service`, dữ liệu được đồng bộ sang `search-service` qua RabbitMQ theo thời gian thực, giúp cải thiện tốc độ tìm kiếm và giảm tải cho DB.
-* **Stream HLS (HTTP Live Streaming)**: Video được chia nhỏ thành nhiều phân đoạn `.ts` và quản lý bởi danh sách phát `.m3u8`. Điều này vừa giúp tiết kiệm băng thông (tải đến đâu xem đến đó), vừa ngăn chặn việc tải tệp video gốc một cách dễ dàng.
-* **OpenResty (Nginx + Lua) Gateway**: Hoạt động như lớp bảo mật ngoài cùng, sử dụng Lua script để kiểm tra tính hợp lệ của token trong Redis, sau đó tự động cấp phát (ký) một Gateway Token nội bộ để truyền thông tin định danh người dùng xuống các microservice một cách an toàn.
+[Xem video demo hệ thống](https://drive.google.com/file/d/19zzswi93my3UNmRU_v1bg32e9hJI_vY8/view?usp=sharing)
 
----
+## Công nghệ
 
-## 2. Kiến trúc tổng thể (Overall Architecture)
-Hệ thống kết hợp mô hình **Event-driven Microservices (Kiến trúc hướng sự kiện)** cho các tác vụ xử lý bất đồng bộ và **gRPC (giao tiếp đồng bộ)** cho các truy vấn nội bộ.
+Java 21, Spring Boot 4.1.2, Spring Security, Spring Data JPA (Hibernate), Flyway, MapStruct, gRPC, RabbitMQ, Redis, MySQL, Elasticsearch, MinIO, OpenResty (Lua), FFmpeg, Docker Compose.
 
-### Sơ đồ kiến trúc tổng thể (System Architecture)
+## Tính năng chính
 
-```mermaid
-graph TD
-    Client["Client / Frontend"] -->|HTTP Request| Nginx["OpenResty/Nginx Gateway <br> (Port 80 + Lua Access Check)"]
-    Nginx -->|Proxy Pass| Gateway["Spring Cloud Gateway <br> (Port 8080)"]
-    
-    subgraph Microservices Internal
-        Gateway -->|Route| Identity["Identity Service <br> (Port 8000)"]
-        Gateway -->|Route| User["User Service <br> (Port 8081)"]
-        Gateway -->|Route| Course["Course Service <br> (Port 8082)"]
-        Gateway -->|Route| Media["Media Service <br> (Port 8083)"]
-        Gateway -->|Route| Payment["Payment Service <br> (Port 8085)"]
-        Gateway -->|Route| Search["Search Service <br> (Port 8086)"]
-        
-        Identity <-->|gRPC| User
-        Course <-->|gRPC| User
-    end
-    
-    subgraph Message Broker & Event Processing
-        Media -->|Publish Event| RabbitMQ["RabbitMQ Broker <br> (Port 5672)"]
-        RabbitMQ -->|Deliver Event| FFmpegWorker["FFmpeg Worker <br> (Port 9900)"]
-        FFmpegWorker -->|Publish Status| RabbitMQ
-        RabbitMQ -->|Deliver Status| Media
-        RabbitMQ -->|Update Lesson| Course
-        Course -->|Publish Event| RabbitMQ
-        RabbitMQ -->|Sync Data| Search
-    end
+- Đăng ký, đăng nhập, refresh token có phát hiện tái sử dụng, phân quyền RBAC (`USER` / `INSTRUCTOR` / `ADMIN`)
+- Hồ sơ người dùng và quy trình xét duyệt giảng viên (`PENDING`, `APPROVED`, `REJECTED`, `SUSPENDED`)
+- Tạo, quản lý khóa học, chương, bài học, ghi danh miễn phí/trả phí và theo dõi tiến độ học
+- Tìm kiếm khóa học và giảng viên toàn văn bằng Elasticsearch, đồng bộ bất đồng bộ qua RabbitMQ
+- Thanh toán qua VNPay sandbox, xác thực IPN và tự động ghi danh sau khi thanh toán thành công
+- Upload video có kiểm tra quyền sở hữu, chuyển mã bất đồng bộ sang HLS (`.m3u8`/`.ts`) qua FFmpeg
 
-    subgraph Database & Storage
-        Identity & User & Course & Media & Payment -->|Read/Write| MySQL[("MySQL DB <br> (Port 3306)")]
-        User & Course & Payment -->|Cache/Session| Redis[("Redis Cache <br> (Port 6379)")]
-        Media & FFmpegWorker -->|Upload/Stream| MinIO[("MinIO Object Storage <br> (Port 9000)")]
-        Search -->|Read/Write| Elasticsearch[("Elasticsearch <br> (Port 9200)")]
-    end
-```
+## Kiến trúc
 
----
-
-## 3. Các Tech Stack sử dụng (Technology Stack)
-
-| Tầng / Thành phần | Công nghệ | Phiên bản | Vai trò |
-| :--- | :--- | :--- | :--- |
-| **Language & Core** | Java | **21** | Ngôn ngữ phát triển chính |
-| **Framework** | Spring Boot | **4.1.2** | Framework xây dựng ứng dụng (spring-boot-starter-parent) |
-| **API Gateway (biên)** | OpenResty (Nginx + Lua) | **1.0.0** | Chặn lọc yêu cầu từ biên, kiểm tra Access Token qua Redis |
-| **API Gateway (nội bộ)** | Spring Cloud Gateway | (managed by Spring Boot) | Định tuyến và phân phối request đến microservice |
-| **Communication (Đồng bộ — RPC)** | gRPC | **1.69.0** | Giao tiếp nội bộ nhanh và ổn định giữa các service |
-| **Communication (Đồng bộ — Schema)** | Protocol Buffers | **4.29.3** | Định nghĩa contract và serialization cho gRPC |
-| **Communication (Bất đồng bộ)** | RabbitMQ | **3.13-management-alpine** | Điều phối các sự kiện nghiệp vụ dưới dạng hướng sự kiện |
-| **Hệ quản trị CSDL** | MySQL | **8.0.44-debian** | Lưu trữ thông tin tài khoản, khóa học, dữ liệu quan hệ |
-| **Search Engine** | Elasticsearch | **9.0.3** | Tìm kiếm Full-text cho khóa học |
-| **Log Visualization** | Kibana | **9.0.3** | Theo dõi và phân tích log Elasticsearch |
-| **Bộ nhớ đệm** | Redis | **8.4.0** | Cache và quản lý Session token |
-| **Cache Monitor** | RedisInsight | **2.70** | Theo dõi và quản lý dữ liệu Redis |
-| **Object Storage** | MinIO | **RELEASE.2024-06-13** | Lưu trữ video thô, thumbnail và các tệp HLS đã xử lý |
-| **Media Processing** | FFmpeg | jrottenberg/ffmpeg:latest | Thực hiện transcode video sang luồng phát chuẩn HLS |
-| **Ánh xạ DTO** | MapStruct | **1.6.3** | Chuyển đổi Entity ↔ DTO tự động, hiệu năng cao |
-| **Boilerplate** | Lombok | (managed by Spring Boot) | Giảm thiểu code lặp (getter, setter, constructor) |
-| **Binding** | lombok-mapstruct-binding | **0.2.0** | Tích hợp annotation processor Lombok + MapStruct |
-| **Validation** | Jakarta Validation | (managed by Spring Boot) | Kiểm định dữ liệu đầu vào tại tầng Controller |
-| **API Documentation** | SpringDoc OpenAPI (Swagger UI) | **3.0.3** | Tự động sinh tài liệu API tương tác |
-| **Password Hashing** | Bouncy Castle (Argon2) | **1.84** | Băm mật khẩu bảo mật cao tại identity-service |
-| **Triển khai** | Docker, Docker Compose | - | Đóng gói hạ tầng phát triển đồng nhất giữa các máy local |
-
----
-
-## 4. Sơ đồ luồng (Flowchart) & Cấu trúc thư mục (Directory Structure)
-
-### 4.1 Quy trình tải lên và xử lý Video bài học (Asynchronous Video Processing Pipeline)
-Khi giảng viên tải lên một video mới, luồng dữ liệu bất đồng bộ diễn ra như sau:
+**Kiến trúc tổng quát**
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor Instructor as Giảng viên
-    participant MediaService as Media Service (8083)
-    participant MinIO as MinIO Storage
-    participant RabbitMQ as RabbitMQ Broker
-    participant Worker as FFmpeg Worker (9900)
-    participant CourseService as Course Service (8082)
-
-    Instructor->>MediaService: Tải lên video (.mp4) kèm lessonId
-    activate MediaService
-    MediaService->>MinIO: Lưu trữ video thô tại `tmp/{uuid}.mp4`
-    MinIO-->>MediaService: Xác nhận upload thành công
-    MediaService->>RabbitMQ: Gửi VideoUploadedEvent (media.video.uploaded)
-    MediaService-->>Instructor: Trả về URL tạm và hoàn thành HTTP request nhanh (200 OK)
-    deactivate MediaService
-
-    Note over RabbitMQ, Worker: Luồng xử lý bất đồng bộ ngầm bắt đầu
-    RabbitMQ->>Worker: Chuyển tiếp VideoUploadedEvent
-    activate Worker
-    Worker->>MinIO: Tải video thô từ `tmp/{uuid}.mp4`
-    Worker->>Worker: Transcode video bằng FFmpeg sang chuẩn HLS (.m3u8 & .ts segments)
-    Worker->>MinIO: Upload các file HLS lên `processed/{lessonId}/`
-    Worker->>RabbitMQ: Gửi VideoProcessedEvent (media.video.processed, status=SUCCESS)
-    deactivate Worker
-
-    RabbitMQ->>MediaService: Chuyển tiếp VideoProcessedEvent
-    activate MediaService
-    MediaService->>MinIO: Di chuyển toàn bộ tệp từ `processed/{lessonId}/` sang `lessons/{lessonId}/`
-    MediaService->>RabbitMQ: Gửi VideoTranscodedEvent (media.video.transcoded)
-    deactivate MediaService
-
-    RabbitMQ->>CourseService: Chuyển tiếp VideoTranscodedEvent
-    activate CourseService
-    CourseService->>CourseService: Cập nhật trạng thái bài giảng thành READY & set link HLS playlist (.m3u8)
-    CourseService-->>CourseService: Lưu trữ database MySQL
-    deactivate CourseService
-    Note over Instructor, CourseService: Bài giảng sẵn sàng truyền phát (streaming) cho Học viên
+flowchart LR
+    Client["Client"] --> OpenResty["OpenResty (Nginx + Lua)"] --> Gateway["Gateway"] --> Microservices
+    subgraph Microservices
+        identity["identity-service"]
+        user["user-service"]
+        course["course-service"]
+        payment["payment-service"]
+        media["media-service"]
+        search["search-service"]
+    end
+    ffmpeg["ffmpeg-worker"]
+    OpenResty & identity & search --> Redis[("Redis")]
+    identity & user & course & payment --> MySQL[("MySQL")]
+    media & ffmpeg --> MinIO[("MinIO")]
+    search --> ES[("Elasticsearch")]
 ```
 
----
+*Mũi tên tới kho dữ liệu thể hiện service đọc/ghi kho đó.*
 
-### 4.2 Quy trình đồng bộ dữ liệu tìm kiếm (Elasticsearch Data Sync Pipeline)
-Để duy trì tính nhất quán của dữ liệu và cho phép người dùng tìm kiếm toàn văn hiệu quả, hệ thống đồng bộ ngầm dữ liệu từ MySQL sang Elasticsearch thông qua luồng sự kiện RabbitMQ:
+**Giao tiếp giữa các service**
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor Admin as Giảng viên / Admin
-    participant CourseService as Course Service (8082)
-    participant MySQL as MySQL DB
-    participant RabbitMQ as RabbitMQ Broker
-    participant SearchService as Search Service (8086)
-    participant Elasticsearch as Elasticsearch (9200)
-
-    Admin->>CourseService: Tạo / Cập nhật khóa học
-    activate CourseService
-    CourseService->>MySQL: Lưu thay đổi dữ liệu khóa học
-    CourseService->>RabbitMQ: Gửi sự kiện cập nhật khóa học (course.updated)
-    CourseService-->>Admin: Trả về HTTP Response (200 OK)
-    deactivate CourseService
-
-    RabbitMQ->>SearchService: Chuyển tiếp sự kiện cập nhật
-    activate SearchService
-    SearchService->>SearchService: Ánh xạ dữ liệu sang Elasticsearch Document
-    SearchService->>Elasticsearch: Lưu hoặc Cập nhật Document (Upsert)
-    Elasticsearch-->>SearchService: Xác nhận thành công
-    deactivate SearchService
-    
-    Note over Admin, Elasticsearch: Dữ liệu khóa học sẵn sàng để người dùng tìm kiếm toàn văn
+flowchart LR
+    identity["identity-service"] -->|"gRPC: tạo profile"| user["user-service"]
+    user -->|"gRPC: gán/thu hồi role"| identity
+    course["course-service"] -->|"gRPC: lấy hồ sơ"| user
+    payment["payment-service"] -->|"gRPC: lấy giá"| course
+    media["media-service"] -->|"gRPC: kiểm tra quyền"| course
+    payment -.->|"payment.completed"| RabbitMQ["RabbitMQ"]
+    user -.->|"profile.updated<br/>instructor.search.upserted"| RabbitMQ
+    course -.->|"course.created/updated/deleted<br/>course.metrics.sync"| RabbitMQ
+    media -.->|"video.uploaded<br/>video.transcoded"| RabbitMQ
+    ffmpeg["ffmpeg-worker"] -.->|"video.processed"| RabbitMQ
+    RabbitMQ -.->|"payment.completed, profile.updated<br/>video.uploaded, video.transcoded"| course
+    RabbitMQ -.->|"course.created/updated/deleted<br/>course.metrics.sync<br/>instructor.search.upserted"| search["search-service"]
+    RabbitMQ -.->|"video.uploaded"| ffmpeg
+    RabbitMQ -.->|"video.processed"| media
 ```
 
----
+*Nét liền: gọi đồng bộ gRPC. Nét đứt: sự kiện bất đồng bộ qua RabbitMQ.*
 
-### 4.3 Cấu trúc thư mục Backend (Repository Directory Structure)
-Mã nguồn backend được phân cấp rõ ràng theo cấu trúc đa module Maven và Docker Compose:
+| Service | Vai trò |
+|---|---|
+| OpenResty (Nginx + Lua) | Xác thực token Redis, ký JWT nội bộ |
+| gateway | Định tuyến request tới các microservice |
+| identity-service | Tài khoản, phiên đăng nhập, phân quyền |
+| user-service | Hồ sơ người dùng và giảng viên |
+| course-service | Khóa học, ghi danh, tiến độ học |
+| media-service | Upload, streaming HLS, lưu trữ MinIO |
+| payment-service | Tạo giao dịch và IPN VNPay |
+| search-service | Đồng bộ, tìm kiếm trên Elasticsearch |
+| ffmpeg-worker | Chuyển mã video sang định dạng HLS |
 
-```text
-uniwise/backend/
-├── agents/                           # Tài liệu hướng dẫn cấu trúc & quy tắc cho AI Agent
-│   ├── ARCHITECTURE_REVIEW.md        # Chi tiết kiến trúc module Account mẫu
-│   └── GUIDELINE_BACKEND.md          # Các tiêu chuẩn thiết kế và Skeleton code mẫu
-├── certificates/                     # Khóa bảo mật SSL và mã hóa phục vụ OpenResty/Nginx
-├── contracts/                        # Định nghĩa gRPC Protocol Buffers dùng chung
-│   └── proto/
-│       └── uniwise/
-│           ├── identity/             # Protobuf cho dịch vụ Identity (Xác thực)
-│           └── user/                 # Protobuf cho dịch vụ User (Thông tin người dùng)
-├── gateway/                          # Spring Cloud Gateway (Port 8080) - Cửa ngõ định tuyến API
-├── infrastructure/                   # Cấu hình cài đặt hạ tầng hệ thống
-│   └── nginx/                        # Nginx OpenResty tích hợp Lua script để kiểm tra access token ở lớp biên
-│       ├── conf/nginx.conf           # File cấu hình Nginx chính
-│       └── lua/                      # Script Lua xác thực token
-├── platforms/
-│   └── java/                         # Mã nguồn dự án Java Spring Boot
-│       ├── libs/                     # Các thư viện dùng chung cho các microservice
-│       │   ├── common/               # Định nghĩa lỗi, lớp bao ApiResponse chung
-│       │   ├── grpc-contracts/       # Mã nguồn Java tự động sinh từ file Protobuf
-│       │   ├── grpc-spring-boot-starter/  # Starter tự động cấu hình gRPC Client/Server
-│       │   ├── jwt-security-starter/ # Starter tích hợp Spring Security và cấu hình JWT
-│       │   ├── platform-event-contract/   # Cấu trúc các Event payload truyền nhận qua RabbitMQ
-│       │   └── platform-event-starter/    # Starter tự động cấu hình RabbitMQ Publisher/Subscriber
-│       ├── services/                 # Các dịch vụ nghiệp vụ cốt lõi
-│       │   ├── course-service/       # Quản lý khóa học, bài học, chương trình học (Port 8082)
-│       │   ├── identity-service/     # Quản lý tài khoản, phân quyền, cấp phát token JWT (Port 8000)
-│       │   ├── media-service/        # Nhận file upload, lưu trữ tạm và di chuyển tệp tin (Port 8083)
-│       │   ├── payment-service/      # Xử lý thanh toán, giỏ hàng, hóa đơn (Port 8085)
-│       │   ├── search-service/       # Đồng bộ dữ liệu và tìm kiếm toàn văn khóa học với Elasticsearch (Port 8086)
-│       │   └── user-service/         # Quản lý hồ sơ cá nhân và phân quyền gRPC (Port 8081)
-│       └── workers/
-│           └── ffmpeg-worker/        # Service xử lý video offline và transcode sang HLS (Port 9900)
-├── docker-compose.yaml               # Cấu hình container hóa MySQL, Redis, RabbitMQ, MinIO, FFmpeg
-└── startup.ps1                       # Script khởi tạo nhanh hạ tầng Docker và khởi chạy đồng loạt các microservice
+Hạ tầng: MySQL, Redis, RabbitMQ, MinIO, Elasticsearch, container FFmpeg; các service giao tiếp qua REST, gRPC và RabbitMQ.
+
+## Điểm nhấn kỹ thuật
+
+### 1. Đăng nhập và xác thực (Opaque token + Edge JWT)
+- `identity-service` cấp opaque access token (lưu hash SHA-256 trong Redis, TTL 15 phút) và refresh token có phát hiện tái sử dụng (thu hồi toàn bộ phiên nếu token cũ bị dùng lại).
+- OpenResty tra Redis ở lớp biên, xóa header `Authorization`/`X-Auth-Token` từ client rồi ký JWT RS256 nội bộ (`X-Auth-Token`, TTL 5 phút) để service đích xác thực stateless bằng `public.pem`.
+- **Vì sao thiết kế như vậy**: thu hồi quyền ngay lập tức khi logout, khóa tài khoản hoặc đổi vai trò, nhưng vẫn tránh việc từng microservice phải truy vấn DB/Redis cho mỗi request.
+
+### 2. Thanh toán VNPay và ghi danh
+- `payment-service` gọi gRPC sang `course-service` để lấy giá gốc (tránh giả mạo giá từ client), lưu giao dịch `PENDING` và tạo URL VNPay ký HMAC-SHA512.
+- Khi nhận IPN, service xác thực chữ ký (constant-time), kiểm tra `vnp_TmnCode` và số tiền (`amount * 100`), khóa bi quan dòng giao dịch (`FOR UPDATE`) để chống xử lý trùng khi IPN gọi đồng thời.
+- Sau khi DB commit (`afterCommit`), sự kiện `payment.completed` mới được gửi qua RabbitMQ để `course-service` ghi danh idempotent (có retry 3 lần và DLQ).
+- **Vì sao thiết kế như vậy**: tách biệt xác nhận thanh toán với ghi danh để giảm ghép nối giữa hai service và đảm bảo an toàn khi IPN bị gọi lặp lại.
+
+### 3. Xử lý video bất đồng bộ sang HLS
+- `media-service` kiểm tra quyền sở hữu bài học qua gRPC, tải file thô lên MinIO (`tmp/`) và phát `media.video.uploaded` (tự dọn file tạm nếu gửi RabbitMQ lỗi).
+- `ffmpeg-worker` đo thời lượng bằng `ffprobe`, chuyển mã sang HLS vào `processed/`, rồi `media-service` chuyển sang `lessons/` và báo `course-service` cập nhật trạng thái bài học thành `READY`.
+- **Vì sao thiết kế như vậy**: đẩy tác vụ transcode tốn CPU ra worker riêng giúp API upload phản hồi nhanh và không làm nghẽn các service nghiệp vụ.
+
+## Chạy dự án
+
+Yêu cầu: Docker, Docker Compose, JDK 21.
+
+```bash
+./build-libs.sh
+docker network create uniwise-net   # chỉ cần chạy lần đầu
+docker compose -p uniwise up -d --build
 ```
+
+Tài khoản Admin mặc định (chỉ tự tạo ở profile `dev`/`docker`): `admin@uniwise.com` / `00000000`.
+
+<!-- TODO: Thêm link repo và hướng dẫn chạy Frontend (nếu có) -->
+
+<details>
+<summary>Chi tiết cấu hình</summary>
+
+- **Kiểm tra hệ thống**:
+  - Xem trạng thái container: `docker compose -p uniwise ps`
+  - Kiểm tra OpenResty health check: `curl http://localhost/health` (trả về `OK`)
+- **Danh sách cổng (`docker-compose.yaml`)**:
+  - Entry point: OpenResty `80`
+  - Hạ tầng chỉ bind `127.0.0.1`: MySQL `3306`, Redis `6379`, RedisInsight `5540`, RabbitMQ `5672`/`15672`, MinIO `9000`/`9001`, Elasticsearch `9200`/`9300`, Kibana `5601`
+- **Tài khoản Admin (`ADMIN_EMAIL`, `ADMIN_PASSWORD`)**:
+  - `identity-service` đọc `ADMIN_EMAIL` và `ADMIN_PASSWORD` khi khởi tạo ở profile `dev`/`docker`, chỉ có tác dụng khi tài khoản chưa tồn tại trong CSDL.
+  - Hiện `docker-compose.yaml` chưa truyền 2 biến này vào `identity-service`; cần khai báo thêm trong mục `environment` nếu muốn ghi đè khi chạy bằng Docker Compose.
+- **Thanh toán VNPay (sandbox)**:
+  - Có thể ghi đè qua biến môi trường `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL` (đã khai báo cho `payment-service` trong `docker-compose.yaml`).
+
+</details>
+
+## Known limitations
+
+| Hạn chế | Hướng giải quyết |
+|---|---|
+| Mật khẩu hạ tầng (MySQL, Redis, RabbitMQ, MinIO, Elasticsearch) và admin mặc định được ghi trực tiếp trong cấu hình dev (cổng hạ tầng đã bind `127.0.0.1`). | Chuyển toàn bộ secret sang `.env` (không commit) hoặc secret manager và dùng mật khẩu ngẫu nhiên khi triển khai thật. |
+| Đổi mật khẩu (`AccountServiceImpl.update`) chưa thu hồi các session/refresh token đang hoạt động. | Thu hồi toàn bộ session của tài khoản và xóa các key Redis `access:*`, `session:*` sau khi đổi mật khẩu. |
+| `GET /api/v1/courses/published` trả về `CourseResponse` kèm danh sách bài học chưa ẩn `contentReference` với người chưa ghi danh. | Dùng DTO tóm tắt cho API danh sách hoặc ẩn `contentReference` cho bài học trả phí tương tự API chi tiết khóa học. |
+| `ffmpeg-worker` chạy bằng user `root` và mount `/var/run/docker.sock` để gọi `docker exec` sang container `ffmpeg`. | Cài FFmpeg trực tiếp trong image của worker, chạy bằng user non-root và bỏ mount `docker.sock`. |
+| Nếu RabbitMQ lỗi sau khi giao dịch thanh toán commit, sự kiện `payment.completed` có thể bị mất khiến học viên chưa được ghi danh. | Áp dụng Transactional Outbox: ghi sự kiện vào bảng trong cùng transaction DB và dùng job nền gửi lại tới khi thành công. |
+| Luồng video chưa idempotent: `VideoProcessedConsumer` xóa từng file nguồn ngay khi copy (lỗi giữa chừng rồi retry sẽ xóa thư mục đích gây mất file), còn `ffmpeg-worker` nuốt exception nên không retry. | Chỉ xóa file nguồn sau khi copy đầy đủ tất cả segment; không nuốt exception ở worker để RabbitMQ retry đúng cách. |
+| `media-service` và `ffmpeg-worker` chưa có retry giới hạn và DLQ; 3 queue đồng bộ khóa học ở `search-service` đã có retry nhưng chưa có DLQ. | Bật `retry`, đặt `default-requeue-rejected=false` và khai báo DLQ thống nhất như đã làm ở `course-service`. |
+| URL video lưu trong `Lesson.contentReference` trỏ trực tiếp tới MinIO dù `StreamingController` đã có kiểm tra quyền qua gRPC. | Trả về URL đi qua `/media-service/api/v1/streaming/...` hoặc dùng signed URL ngắn hạn với bucket private. |
+
+## Hướng phát triển
+
+- Bổ sung unit test và integration test cho các luồng cốt lõi (xác thực, thanh toán, ghi danh) kèm CI trên GitHub Actions
+- Áp dụng Transactional Outbox cho sự kiện thanh toán và chuẩn hóa retry/DLQ cho toàn bộ consumer
+- Chuyển cấu hình nhạy cảm sang secret management và phát video qua endpoint streaming có kiểm tra quyền
