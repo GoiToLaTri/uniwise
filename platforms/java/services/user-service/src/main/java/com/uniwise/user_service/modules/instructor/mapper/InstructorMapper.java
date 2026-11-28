@@ -80,8 +80,12 @@ public interface InstructorMapper {
 
     PublicInstructorDegreeResponse toPublicDegreeResponse(DegreeCertificate degree);
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "instructorProfile", ignore = true)
     DegreeCertificate toDegreeEntity(DegreeDto dto);
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "instructorProfile", ignore = true)
     Expertise toExpertiseEntity(ExpertiseDto dto);
 
     DegreeDto toDegreeDto(DegreeCertificate degree);
