@@ -2,7 +2,7 @@ services:
   mysql:
     image: mysql:8.0.44-debian
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=0000
     volumes:
@@ -20,7 +20,7 @@ services:
   redis:
     image: redis:8.4.0
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     environment:
       - REDIS_PASSWORD=0000
     command: redis-server --requirepass 0000 --appendonly yes
@@ -39,7 +39,7 @@ services:
     image: redis/redisinsight:2.70
     # container_name: redisinsight
     ports:
-      - "5540:5540"
+      - "127.0.0.1:5540:5540"
     depends_on:
       redis:
         condition: service_healthy
@@ -261,8 +261,8 @@ services:
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
@@ -282,8 +282,8 @@ services:
     image: minio/minio:RELEASE.2024-06-13T22-53-53Z
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
@@ -320,8 +320,8 @@ services:
       - ELASTIC_PASSWORD=000000
       - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - "127.0.0.1:9200:9200"
+      - "127.0.0.1:9300:9300"
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     healthcheck:
@@ -342,7 +342,7 @@ services:
       - ELASTICSEARCH_USERNAME=kibana_system
       - ELASTICSEARCH_PASSWORD=000000
     ports:
-      - "5601:5601"
+      - "127.0.0.1:5601:5601"
     networks:
       - uniwise
     restart: unless-stopped
