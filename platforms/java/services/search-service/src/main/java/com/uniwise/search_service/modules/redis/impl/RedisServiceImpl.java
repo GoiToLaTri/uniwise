@@ -100,7 +100,7 @@ public class RedisServiceImpl implements RedisService {
                 .count(SCAN_COUNT)
                 .build();
 
-        int totalDeleted = 0;
+        long totalDeleted = 0;
         List<String> batch = new ArrayList<>(DELETE_BATCH_SIZE);
 
         try (Cursor<String> cursor = template.scan(options)) {
@@ -108,18 +108,26 @@ public class RedisServiceImpl implements RedisService {
                 return;
             }
             while (cursor.hasNext()) {
-                batch.add(cursor.next());
+                String key = cursor.next();
+                if (key == null) {
+                    continue;
+                }
+                batch.add(key);
                 if (batch.size() >= DELETE_BATCH_SIZE) {
-                    template.delete(List.copyOf(batch));
-                    totalDeleted += batch.size();
+                    Long deleted = template.delete(List.copyOf(batch));
+                    if (deleted != null) {
+                        totalDeleted += deleted;
+                    }
                     batch.clear();
                 }
             }
         }
 
         if (!batch.isEmpty()) {
-            template.delete(List.copyOf(batch));
-            totalDeleted += batch.size();
+            Long deleted = template.delete(List.copyOf(batch));
+            if (deleted != null) {
+                totalDeleted += deleted;
+            }
         }
 
         if (totalDeleted > 0) {

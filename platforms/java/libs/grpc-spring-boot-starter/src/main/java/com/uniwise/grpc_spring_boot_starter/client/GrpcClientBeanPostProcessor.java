@@ -80,11 +80,16 @@ public class GrpcClientBeanPostProcessor implements BeanPostProcessor, Disposabl
             // Tìm method static 'newBlockingStub', 'newStub', hoặc 'newFutureStub' trong
             // class cha (ServiceGrpc)
             Class<?> enclosingClass = stubClass.getEnclosingClass();
-            String methodName = "newBlockingStub";
-            if (stubClass.getName().endsWith("FutureStub")) {
+            String simpleName = stubClass.getSimpleName();
+            String methodName;
+            if (simpleName.endsWith("BlockingStub")) {
+                methodName = "newBlockingStub";
+            } else if (simpleName.endsWith("FutureStub")) {
                 methodName = "newFutureStub";
-            } else if (stubClass.getName().endsWith("Stub") && !stubClass.getName().contains("Blocking")) {
+            } else if (simpleName.endsWith("Stub")) {
                 methodName = "newStub";
+            } else {
+                methodName = "newBlockingStub";
             }
 
             Method factoryMethod = enclosingClass.getMethod(methodName, io.grpc.Channel.class);
@@ -96,21 +101,54 @@ public class GrpcClientBeanPostProcessor implements BeanPostProcessor, Disposabl
 
     @Override
     public void destroy() {
-        channelCache.forEach((name, channel) -> {
-            if (channel != null && !channel.isShutdown()) {
-                channel.shutdown();
+        boolean interrupted = false;
+        try {
+            for (Map.Entry<String, ManagedChannel> entry : channelCache.entrySet()) {
+                ManagedChannel channel = entry.getValue();
+                if (channel != null && !channel.isShutdown()) {
+                    try {
+                        channel.shutdown();
+                    } catch (RuntimeException e) {
+                        log.warn("Error initiating shutdown for gRPC channel '{}'", entry.getKey(), e);
+                    }
+                }
+            }
+
+            long deadlineNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            for (Map.Entry<String, ManagedChannel> entry : channelCache.entrySet()) {
+                ManagedChannel channel = entry.getValue();
+                if (channel == null || channel.isTerminated()) {
+                    continue;
+                }
                 try {
-                    if (!channel.awaitTermination(5, TimeUnit.SECONDS)) {
-                        log.warn("gRPC channel '{}' did not terminate within 5s, forcing shutdownNow()", name);
+                    long remainingNanos = deadlineNanos - System.nanoTime();
+                    if (interrupted || remainingNanos <= 0) {
+                        channel.shutdownNow();
+                        continue;
+                    }
+                    if (!channel.awaitTermination(remainingNanos, TimeUnit.NANOSECONDS)) {
+                        log.warn("gRPC channel '{}' did not terminate within 5s, forcing shutdownNow()",
+                                entry.getKey());
                         channel.shutdownNow();
                     }
                 } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    log.warn("Interrupted while shutting down gRPC channel '{}', forcing shutdownNow()", name, e);
-                    channel.shutdownNow();
+                    interrupted = true;
+                    log.warn("Interrupted while shutting down gRPC channel '{}', forcing shutdownNow()",
+                            entry.getKey(), e);
+                    try {
+                        channel.shutdownNow();
+                    } catch (RuntimeException ex) {
+                        log.warn("Error forcing shutdownNow for gRPC channel '{}'", entry.getKey(), ex);
+                    }
+                } catch (RuntimeException e) {
+                    log.warn("Error awaiting termination for gRPC channel '{}'", entry.getKey(), e);
                 }
             }
-        });
-        channelCache.clear();
+        } finally {
+            channelCache.clear();
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 }

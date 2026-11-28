@@ -141,6 +141,17 @@ class CommonApplicationTests {
 
         assertNotNull(knownFieldResponse.getBody());
         assertEquals(ValidationError.NAME_REQUIRED.getCode(), knownFieldResponse.getBody().getCode());
+
+        BeanPropertyBindingResult nullFieldMsgResult = new BeanPropertyBindingResult(new Object(), "itemRequest");
+        nullFieldMsgResult.addError(new FieldError("itemRequest", "name", null, false, null, null, null));
+        nullFieldMsgResult.addError(new ObjectError("itemRequest", ValidationError.EMAIL_INVALID.name()));
+        MethodArgumentNotValidException nullFieldMsgException = new MethodArgumentNotValidException(
+                dummyMethodParameter(), nullFieldMsgResult);
+        ResponseEntity<ErrorResponse> nullFieldMsgResponse = globalExceptionHandler.validationExceptionHandling(
+                nullFieldMsgException, request);
+
+        assertNotNull(nullFieldMsgResponse.getBody());
+        assertEquals(ValidationError.EMAIL_INVALID.getCode(), nullFieldMsgResponse.getBody().getCode());
     }
 
     @Test

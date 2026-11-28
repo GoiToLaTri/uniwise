@@ -325,7 +325,7 @@ services:
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS -u elastic:000000 http://localhost:9200/_cluster/health >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS -u elastic:000000 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s' >/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10

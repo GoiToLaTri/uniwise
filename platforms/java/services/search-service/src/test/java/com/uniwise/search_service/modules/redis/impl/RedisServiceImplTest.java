@@ -140,4 +140,26 @@ class RedisServiceImplTest {
         verify(template, never()).delete(anyCollection());
         verify(template, never()).keys(anyString());
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void deleteKeysByPatternSkipsNullKeysFromCursorWithoutNpe() {
+        List<String> keysWithNull = new ArrayList<>();
+        keysWithNull.add("courses:search:page:0");
+        keysWithNull.add(null);
+        keysWithNull.add("courses:search:page:1");
+
+        TrackingCursor cursor = new TrackingCursor(keysWithNull);
+        when(template.scan(any(ScanOptions.class))).thenReturn(cursor);
+        when(template.delete(anyCollection())).thenReturn(2L);
+
+        redisService.deleteKeysByPattern("courses:search:*");
+
+        ArgumentCaptor<Collection<String>> deleteCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(template, times(1)).delete(deleteCaptor.capture());
+        assertEquals(List.of("courses:search:page:0", "courses:search:page:1"),
+                new ArrayList<>(deleteCaptor.getValue()));
+        assertTrue(cursor.isClosed());
+        verify(template, never()).keys(anyString());
+    }
 }

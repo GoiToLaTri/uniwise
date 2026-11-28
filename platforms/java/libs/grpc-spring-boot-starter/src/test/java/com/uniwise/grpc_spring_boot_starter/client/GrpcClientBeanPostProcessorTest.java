@@ -5,6 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -69,6 +72,20 @@ class GrpcClientBeanPostProcessorTest {
         }
     }
 
+    public static class BlockingNamedServiceGrpc {
+        public static BlockingNamedServiceStub newStub(Channel channel) {
+            return new BlockingNamedServiceStub(channel);
+        }
+
+        public static class BlockingNamedServiceStub {
+            final Channel channel;
+
+            BlockingNamedServiceStub(Channel channel) {
+                this.channel = channel;
+            }
+        }
+    }
+
     static class TargetClientBean {
         @GrpcClient("user-service")
         FakeServiceGrpc.FakeServiceBlockingStub blockingStub;
@@ -78,6 +95,9 @@ class GrpcClientBeanPostProcessorTest {
 
         @GrpcClient("course-service")
         FakeServiceGrpc.FakeServiceStub asyncStub;
+
+        @GrpcClient("course-service")
+        BlockingNamedServiceGrpc.BlockingNamedServiceStub blockingNamedAsyncStub;
     }
 
     @Test
@@ -92,7 +112,9 @@ class GrpcClientBeanPostProcessorTest {
             assertNotNull(bean.blockingStub);
             assertNotNull(bean.futureStub);
             assertNotNull(bean.asyncStub);
+            assertNotNull(bean.blockingNamedAsyncStub);
             assertSame(bean.blockingStub.channel, bean.futureStub.channel);
+            assertSame(bean.asyncStub.channel, bean.blockingNamedAsyncStub.channel);
             assertEquals(2, processor.channelCache.size());
         } finally {
             processor.destroy();
@@ -128,9 +150,11 @@ class GrpcClientBeanPostProcessorTest {
         ManagedChannel cleanChannel = mock(ManagedChannel.class);
 
         when(hangingChannel.isShutdown()).thenReturn(false);
-        when(hangingChannel.awaitTermination(5, TimeUnit.SECONDS)).thenReturn(false);
+        when(hangingChannel.isTerminated()).thenReturn(false);
+        when(hangingChannel.awaitTermination(anyLong(), eq(TimeUnit.NANOSECONDS))).thenReturn(false);
         when(cleanChannel.isShutdown()).thenReturn(false);
-        when(cleanChannel.awaitTermination(5, TimeUnit.SECONDS)).thenReturn(true);
+        when(cleanChannel.isTerminated()).thenReturn(false);
+        when(cleanChannel.awaitTermination(anyLong(), eq(TimeUnit.NANOSECONDS))).thenReturn(true);
 
         processor.channelCache.put("hanging", hangingChannel);
         processor.channelCache.put("clean", cleanChannel);
@@ -138,34 +162,71 @@ class GrpcClientBeanPostProcessorTest {
         processor.destroy();
 
         verify(hangingChannel).shutdown();
-        verify(hangingChannel).awaitTermination(5, TimeUnit.SECONDS);
+        verify(hangingChannel).awaitTermination(anyLong(), eq(TimeUnit.NANOSECONDS));
         verify(hangingChannel).shutdownNow();
 
         verify(cleanChannel).shutdown();
-        verify(cleanChannel).awaitTermination(5, TimeUnit.SECONDS);
+        verify(cleanChannel).awaitTermination(anyLong(), eq(TimeUnit.NANOSECONDS));
         verify(cleanChannel, never()).shutdownNow();
 
         assertTrue(processor.channelCache.isEmpty());
     }
 
     @Test
-    void destroyRestoresInterruptFlagAndForcesShutdownNowOnInterrupt() throws InterruptedException {
+    void destroyRestoresInterruptFlagOnceAndShutsDownAllRemainingChannels() throws InterruptedException {
         GrpcClientBeanPostProcessor processor = new GrpcClientBeanPostProcessor(new GrpcClientProperties());
-        ManagedChannel channel = mock(ManagedChannel.class);
-        when(channel.isShutdown()).thenReturn(false);
-        when(channel.awaitTermination(5, TimeUnit.SECONDS)).thenThrow(new InterruptedException("stop"));
+        ManagedChannel firstChannel = mock(ManagedChannel.class);
+        ManagedChannel secondChannel = mock(ManagedChannel.class);
 
-        processor.channelCache.put("interrupted", channel);
+        when(firstChannel.isShutdown()).thenReturn(false);
+        when(firstChannel.isTerminated()).thenReturn(false);
+        when(firstChannel.awaitTermination(anyLong(), eq(TimeUnit.NANOSECONDS)))
+                .thenThrow(new InterruptedException("stop"));
+
+        when(secondChannel.isShutdown()).thenReturn(false);
+        when(secondChannel.isTerminated()).thenReturn(false);
+        when(secondChannel.awaitTermination(anyLong(), eq(TimeUnit.NANOSECONDS)))
+                .thenThrow(new InterruptedException("stop"));
+
+        processor.channelCache.put("ch-1", firstChannel);
+        processor.channelCache.put("ch-2", secondChannel);
 
         try {
             processor.destroy();
             assertTrue(Thread.currentThread().isInterrupted());
-            verify(channel).shutdown();
-            verify(channel).shutdownNow();
+            verify(firstChannel).shutdown();
+            verify(secondChannel).shutdown();
+            verify(firstChannel).shutdownNow();
+            verify(secondChannel).shutdownNow();
             assertTrue(processor.channelCache.isEmpty());
         } finally {
             Thread.interrupted();
         }
+    }
+
+    @Test
+    void destroyContinuesClosingRemainingChannelsWhenOneThrowsRuntimeException() throws InterruptedException {
+        GrpcClientBeanPostProcessor processor = new GrpcClientBeanPostProcessor(new GrpcClientProperties());
+        ManagedChannel brokenChannel = mock(ManagedChannel.class);
+        ManagedChannel healthyChannel = mock(ManagedChannel.class);
+
+        when(brokenChannel.isShutdown()).thenReturn(false);
+        doThrow(new IllegalStateException("shutdown failed")).when(brokenChannel).shutdown();
+        when(brokenChannel.isTerminated()).thenReturn(true);
+
+        when(healthyChannel.isShutdown()).thenReturn(false);
+        when(healthyChannel.isTerminated()).thenReturn(false);
+        when(healthyChannel.awaitTermination(anyLong(), eq(TimeUnit.NANOSECONDS))).thenReturn(true);
+
+        processor.channelCache.put("broken", brokenChannel);
+        processor.channelCache.put("healthy", healthyChannel);
+
+        processor.destroy();
+
+        verify(healthyChannel).shutdown();
+        verify(healthyChannel).awaitTermination(anyLong(), eq(TimeUnit.NANOSECONDS));
+        verify(healthyChannel, never()).shutdownNow();
+        assertTrue(processor.channelCache.isEmpty());
     }
 
     @Test

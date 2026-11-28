@@ -66,11 +66,13 @@ public class GlobalExceptionHandler {
         FieldError fieldError = exception.getFieldError();
         if (fieldError != null) {
             enumKey = fieldError.getDefaultMessage();
-        } else if (exception.getBindingResult() != null
-                && !exception.getBindingResult().getAllErrors().isEmpty()) {
-            ObjectError objectError = exception.getBindingResult().getAllErrors().get(0);
-            if (objectError != null) {
-                enumKey = objectError.getDefaultMessage();
+        }
+        if (enumKey == null && exception.getBindingResult() != null) {
+            for (ObjectError objectError : exception.getBindingResult().getAllErrors()) {
+                if (objectError != null && objectError.getDefaultMessage() != null) {
+                    enumKey = objectError.getDefaultMessage();
+                    break;
+                }
             }
         }
 
