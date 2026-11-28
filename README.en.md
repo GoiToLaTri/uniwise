@@ -105,12 +105,12 @@ Infrastructure: MySQL, Redis, RabbitMQ, MinIO, Elasticsearch, and an FFmpeg cont
 
 ## Getting Started
 
-Prerequisites: Docker, Docker Compose, JDK 21.
+Prerequisites: Docker, Docker Compose (all services and internal libraries are built inside Docker; JDK 21 is only required when running services locally outside Docker).
 
 ```bash
-./build-libs.sh
 docker network create uniwise-net   # first run only
 docker compose -p uniwise up -d --build
+curl http://localhost/health        # returns OK
 ```
 
 Default Admin account (auto-created only in `dev`/`docker` profiles): `admin@uniwise.com` / `00000000`.
@@ -118,9 +118,10 @@ Default Admin account (auto-created only in `dev`/`docker` profiles): `admin@uni
 <details>
 <summary>Configuration details</summary>
 
-- **Health check**:
-  - Inspect container status: `docker compose -p uniwise ps`
-  - Verify OpenResty health endpoint: `curl http://localhost/health` (returns `OK`)
+- **Health check**: `docker compose -p uniwise ps` and `curl http://localhost/health`
+- **Local development outside Docker (requires JDK 21)**:
+  - Linux / macOS / WSL / Git Bash: run `./build-libs.sh` to verify `.proto` sync and install `platforms/java/libs` to your local Maven repo.
+  - Windows (PowerShell): use `startup.ps1` to start Docker infrastructure, build `platforms/java/libs`, and launch the services.
 - **Exposed ports (`docker-compose.yaml`)**:
   - Entry point: OpenResty `80`
   - Infrastructure bound to `127.0.0.1` only: MySQL `3306`, Redis `6379`, RedisInsight `5540`, RabbitMQ `5672`/`15672`, MinIO `9000`/`9001`, Elasticsearch `9200`/`9300`, Kibana `5601`

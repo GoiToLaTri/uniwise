@@ -105,12 +105,12 @@ Hạ tầng: MySQL, Redis, RabbitMQ, MinIO, Elasticsearch, container FFmpeg; cá
 
 ## Chạy dự án
 
-Yêu cầu: Docker, Docker Compose, JDK 21.
+Yêu cầu: Docker, Docker Compose (tất cả service và thư viện nội bộ được build trong Docker; chỉ cần JDK 21 nếu chạy/dev trực tiếp trên máy local).
 
 ```bash
-./build-libs.sh
 docker network create uniwise-net   # chỉ cần chạy lần đầu
 docker compose -p uniwise up -d --build
+curl http://localhost/health        # trả về OK
 ```
 
 Tài khoản Admin mặc định (chỉ tự tạo ở profile `dev`/`docker`): `admin@uniwise.com` / `00000000`.
@@ -118,9 +118,10 @@ Tài khoản Admin mặc định (chỉ tự tạo ở profile `dev`/`docker`): 
 <details>
 <summary>Chi tiết cấu hình</summary>
 
-- **Kiểm tra hệ thống**:
-  - Xem trạng thái container: `docker compose -p uniwise ps`
-  - Kiểm tra OpenResty health check: `curl http://localhost/health` (trả về `OK`)
+- **Kiểm tra hệ thống**: `docker compose -p uniwise ps` và `curl http://localhost/health`
+- **Build/chạy trực tiếp trên máy local (không dùng Docker cho app, yêu cầu JDK 21)**:
+  - Linux / macOS / WSL / Git Bash: chạy `./build-libs.sh` để kiểm tra đồng bộ `.proto` và cài các thư viện trong `platforms/java/libs` vào local Maven repo.
+  - Windows (PowerShell): dùng `startup.ps1` để khởi động hạ tầng Docker, build `platforms/java/libs` và chạy các service.
 - **Danh sách cổng (`docker-compose.yaml`)**:
   - Entry point: OpenResty `80`
   - Hạ tầng chỉ bind `127.0.0.1`: MySQL `3306`, Redis `6379`, RedisInsight `5540`, RabbitMQ `5672`/`15672`, MinIO `9000`/`9001`, Elasticsearch `9200`/`9300`, Kibana `5601`
