@@ -69,6 +69,8 @@ import lombok.extern.slf4j.Slf4j;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class CourseServiceImpl implements CourseService {
 
+    static final int MAX_PAGE_SIZE = 100;
+
     @NonFinal
     @GrpcClient("user-service")
     ProfileServiceBlockingStub profileServiceClient;
@@ -269,9 +271,11 @@ public class CourseServiceImpl implements CourseService {
         String orderBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
         Sort.Direction direction = "desc".equalsIgnoreCase(sortDir) ? Sort.Direction.DESC : Sort.Direction.ASC;
 
+        int normalizedPage = Math.max(0, page);
+        int normalizedSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
         Pageable pageable = PageRequest.of(
-                Math.max(0, page),
-                Math.max(1, size),
+                normalizedPage,
+                normalizedSize,
                 Sort.by(direction, orderBy));
 
         ECourseStatus statusEnum = null;
