@@ -1,5 +1,6 @@
 package com.uniwise.course_service.modules.learning_progress.impl;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -14,6 +15,7 @@ import com.uniwise.common.dto.response.CourseProgressResponse;
 import com.uniwise.common.dto.response.PageResponse;
 import com.uniwise.common.dto.response.UserCourseDto;
 import com.uniwise.common.dto.response.UserLessonDto;
+import com.uniwise.common.enums.ECourseStatus;
 import com.uniwise.common.exception.HttpException;
 import com.uniwise.common.exception.errors.CourseError;
 import com.uniwise.course_service.modules.course_mgmt.course.entity.Course;
@@ -139,8 +141,11 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     @Transactional
     public void enrollFreeCourse(String accountId, String courseId) {
         Course course = courseServiceHelper.getCourseEntityById(courseId);
+        if (course.getStatus() != ECourseStatus.PUBLISHED) {
+            throw new HttpException(CourseError.COURSE_NOT_FOUND);
+        }
         if (course.getPriceTier() != null && course.getPriceTier().getPriceAmount() != null
-                && course.getPriceTier().getPriceAmount().longValue() > 0) {
+                && course.getPriceTier().getPriceAmount().compareTo(BigDecimal.ZERO) > 0) {
             throw new HttpException(CourseError.COURSE_NOT_FREE);
         }
         enrollUser(accountId, courseId, false);
