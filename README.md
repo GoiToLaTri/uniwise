@@ -1,5 +1,7 @@
 # Uniwise
 
+[English](README.en.md) | **Tiếng Việt**
+
 Backend nền tảng học trực tuyến (e-learning) xây dựng theo kiến trúc microservices hướng sự kiện. Hỗ trợ quản lý khóa học, thanh toán VNPay, ghi danh tự động, tìm kiếm toàn văn và chuyển mã video HLS.
 
 > Dự án cá nhân phục vụ mục đích học tập, chưa được thiết kế cho môi trường production (xem [Known limitations](#known-limitations)).
@@ -112,8 +114,6 @@ docker compose -p uniwise up -d --build
 ```
 
 Tài khoản Admin mặc định (chỉ tự tạo ở profile `dev`/`docker`): `admin@uniwise.com` / `00000000`.
-
-<!-- TODO: Thêm link repo và hướng dẫn chạy Frontend (nếu có) -->
 
 <details>
 <summary>Chi tiết cấu hình</summary>
