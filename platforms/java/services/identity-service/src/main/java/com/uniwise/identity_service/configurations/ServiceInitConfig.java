@@ -4,12 +4,16 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.uniwise.common.dto.request.AccountCreateRequest;
 import com.uniwise.common.dto.request.PermissionCreateRequest;
 import com.uniwise.common.dto.request.RoleCreateRequest;
 import com.uniwise.common.dto.response.AccountResponse;
@@ -42,14 +46,19 @@ public class ServiceInitConfig {
 
     @Bean
     @ConditionalOnProperty(prefix = "spring.datasource", value = "driver-class-name", havingValue = "com.mysql.cj.jdbc.Driver")
-    public ApplicationRunner init() {
+    public ApplicationRunner init(
+            Environment environment,
+            @Value("${ADMIN_EMAIL:admin@uniwise.com}") String adminEmail,
+            @Value("${ADMIN_PASSWORD:00000000}") String adminPassword) {
         log.info("Starting Identity Service initialization...");
         return args -> {
             initializePermissions();
             initializeRoles();
             initializeRolePermissions();
-            initializeAdminAccount();
-            warnIfAdminUsesDefaultPassword();
+            if (environment.acceptsProfiles(Profiles.of("dev", "docker"))) {
+                initializeAdminAccount(IdentitySeedData.adminAccount(adminEmail, adminPassword));
+                warnIfAdminUsesDefaultPassword(adminEmail);
+            }
             log.info("Identity Service initialized successfully");
         };
     }
@@ -112,13 +121,13 @@ public class ServiceInitConfig {
         });
     }
 
-    private void initializeAdminAccount() {
+    private void initializeAdminAccount(AccountCreateRequest adminAccountRequest) {
         String adminAccountId;
         try {
-            AccountResponse adminAccount = accountService.create(IdentitySeedData.DEFAULT_ADMIN_ACCOUNT);
+            AccountResponse adminAccount = accountService.create(adminAccountRequest);
             adminAccountId = adminAccount.getId();
             log.info("Admin account created successfully with email: {}",
-                    IdentitySeedData.DEFAULT_ADMIN_ACCOUNT.getEmail());
+                    adminAccountRequest.getEmail());
         } catch (HttpException e) {
             if (!AccountError.ACCOUNT_ALREADY_EXISTS.getCode().equals(e.getError().getCode())) {
                 log.error("Failed to create admin account: {}", e.getError().getMessage());
@@ -126,7 +135,7 @@ public class ServiceInitConfig {
             }
             try {
                 adminAccountId = accountService.getByEmail(
-                        IdentitySeedData.DEFAULT_ADMIN_ACCOUNT.getEmail()).getId();
+                        adminAccountRequest.getEmail()).getId();
                 log.debug("Admin account already exists");
             } catch (Exception lookupException) {
                 log.error("Failed to load existing admin account: {}", lookupException.getMessage());
@@ -141,23 +150,23 @@ public class ServiceInitConfig {
             accountRoleManager.assignRoles(
                     adminAccountId, Set.of(IdentitySeedData.ADMIN_ROLE_NAME));
             log.info("Administrator role ensured for account '{}'",
-                    IdentitySeedData.DEFAULT_ADMIN_ACCOUNT.getEmail());
+                    adminAccountRequest.getEmail());
         } catch (Exception e) {
             log.error("Failed to ensure administrator role: {}", e.getMessage());
         }
     }
 
-    private void warnIfAdminUsesDefaultPassword() {
+    private void warnIfAdminUsesDefaultPassword(String adminEmail) {
         try {
-            Account adminAccount = accountService.getByEmail(IdentitySeedData.DEFAULT_ADMIN_ACCOUNT.getEmail());
+            Account adminAccount = accountService.getByEmail(adminEmail);
             boolean usesDefaultPassword = passwordEncoder.matches(
-                    IdentitySeedData.DEFAULT_ADMIN_ACCOUNT.getPassword(),
+                    IdentitySeedData.DEFAULT_ADMIN_PASSWORD,
                     adminAccount.getPassword());
 
             if (usesDefaultPassword) {
                 log.warn(
                         "SECURITY WARNING: Administrator account '{}' is still using the default initialization password. Change it immediately.",
-                        IdentitySeedData.DEFAULT_ADMIN_ACCOUNT.getEmail());
+                        adminEmail);
             }
         } catch (Exception e) {
             log.error("Unable to verify whether the administrator account uses the default password: {}",

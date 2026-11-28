@@ -83,11 +83,16 @@ final class IdentitySeedData {
                     .description("Role with full permissions")
                     .build());
 
-    static final AccountCreateRequest DEFAULT_ADMIN_ACCOUNT = AccountCreateRequest.builder()
-            .name("Admin")
-            .email("admin@uniwise.com")
-            .password("00000000")
-            .build();
+    static final String DEFAULT_ADMIN_NAME = "Admin";
+    static final String DEFAULT_ADMIN_PASSWORD = "00000000";
+
+    static AccountCreateRequest adminAccount(String email, String password) {
+        return AccountCreateRequest.builder()
+                .name(DEFAULT_ADMIN_NAME)
+                .email(email)
+                .password(password)
+                .build();
+    }
 
     private IdentitySeedData() {
     }
